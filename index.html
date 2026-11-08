@@ -260,8 +260,9 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   background: color-mix(in srgb, var(--bg) 45%, var(--card));
 }
 .xlbox .bar { margin: 4px 0 8px; }
-.xlbox .msg { margin: 6px 0; }
+.xlbox .msg { display: block; margin: 6px 0; }
 .xlbox .msg:empty { display: none; }
+.xlbox .msg.no { color: var(--danger); border-color: var(--danger); }
 .xlbox .n { font-size: 12px; opacity: .75; }
 .bar {
   display: flex;
@@ -2845,15 +2846,26 @@ async function xlEngine() {
   return window.ExcelJS;
 }
 /* the app says "Line 1 Savannah" but the sheet is "Line 1 Savannah " (a trailing
-   space) — so match the names loosely */
-function xlFindSheet(book, name) {
+   space) — and someone may rename a sheet in Excel — so we look for it in
+   three ways and say which one worked:
+     1. the name (spaces/punctuation ignored: "Line 3 Royal (90-10)" = "Line 3 Royal (90:10)")
+     2. the name at the start of a sheet name
+     3. the only sheet with the right columns for this line (unique or nothing) */
+const xlOverride = {};          /* line id -> sheet name chosen by hand */
+function xlNorm(s) { return String(s == null ? '' : s).trim().toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function xlFindSheet(book, name, n) {
   if (!book || !name) return null;
-  const want = String(name).trim().toLowerCase().replace(/\s+/g, ' ');
   const list = book.worksheets || [];
-  for (let i = 0; i < list.length; i++) {
-    const nm = String(list[i].name).trim().toLowerCase().replace(/\s+/g, ' ');
-    if (nm === want) return list[i];
+  const want = xlNorm(name);
+  if (want) {
+    let hit = list.find(w => xlNorm(w.name) === want);
+    if (hit) return { ws: hit, how: 'name' };
+    hit = list.find(w => xlNorm(w.name).startsWith(want));
+    if (hit) return { ws: hit, how: 'name' };
   }
+  /* the sheet was renamed: fall back to its structure — only if it is unique */
+  const byShape = list.filter(w => xlHeader(w, n));
+  if (byShape.length === 1) return { ws: byShape[0], how: 'structure' };
   return null;
 }
 /* where does every field go in this sheet?  (read the sheet's own header row) */
@@ -2937,22 +2949,50 @@ function xlWriteRow(ws, r, h, L, t, prevR) {
   avg.value = ws2.length ? ws2.reduce((a, b) => a + b, 0) / ws2.length : null;
 }
 
+function xlSetStatus(s, txt, bad) {
+  const st = gi('xl-status-s' + s);
+  if (!st) return;
+  st.textContent = txt;
+  st.classList.toggle('no', !!bad);
+}
 function xlPlan(s) {
   const plan = gi('xl-plan-s' + s), st = gi('xl-status-s' + s);
   if (!plan) return;
   if (!xlBook) { plan.innerHTML = ''; return; }
   let html = '<b>' + xlEsc(xlName) + '</b><br>';
+  const sheets = (xlBook.worksheets || []).map(w => w.name);
   xlChosenLines(s).forEach(L => {
-    const ws = xlFindSheet(xlBook, L.sheet);
-    if (!ws) { html += '⚠ the sheet "' + xlEsc(L.sheet) + '" is not in this workbook<br>'; return; }
+    const ov = xlOverride[L.id];
+    let hit = null;
+    if (ov) {
+      const w = sheets.find(n => n === ov);
+      if (w) { const ws = (xlBook.worksheets || []).find(x => x.name === w); if (ws && xlHeader(ws, L.n)) hit = { ws: ws, how: 'manual' }; }
+    }
+    if (!hit) hit = xlFindSheet(xlBook, L.sheet, L.n);
+    if (!hit) {
+      html += '⚠ the sheet "' + xlEsc(L.sheet) + '" was not found for ' + xlEsc(L.title) +
+        ' — <select class="xlfix" data-line="' + L.id + '"><option value="">pick the sheet…</option>' +
+        sheets.map(n => '<option value="' + xlEsc(n) + '">' + xlEsc(n) + '</option>').join('') + '</select><br>';
+      return;
+    }
+    const ws = hit.ws;
     const h = xlHeader(ws, L.n);
     if (!h) { html += '⚠ "' + xlEsc(ws.name) + '" has different columns — ' + xlEsc(L.title) + ' skipped<br>'; return; }
     const r0 = xlNextRow(ws, h.cDate, h.cAvg);
     const rows = xlRowsFor(L, s);
-    html += '📥 ' + xlEsc(L.title) + ' → <b>' + xlEsc(ws.name) + '</b> · row ' + r0 + (rows.length ? '–' + (r0 + rows.length - 1) : '') + ' (' + rows.length + ' row(s))<br>';
+    html += '📥 ' + xlEsc(L.title) + ' → <b>' + xlEsc(ws.name) + '</b> · row ' + r0 + (rows.length ? '–' + (r0 + rows.length - 1) : '') + ' (' + rows.length + ' row(s))' +
+      (hit.how === 'structure' ? ' <span style="opacity:.75">(the sheet was renamed — matched by its columns)</span>' : '') +
+      (hit.how === 'manual' ? ' <span style="opacity:.75">(your choice)</span>' : '') + '<br>';
     if (rows.length) html += '<span style="opacity:.75">' + xlEsc(rows[0].slice(0, 11).join(' · ')) + '</span><br>';
   });
   plan.innerHTML = html;
+  plan.querySelectorAll('select.xlfix').forEach(sel => {
+    sel.addEventListener('change', () => {
+      if (sel.value) xlOverride[sel.dataset.line] = sel.value;
+      else delete xlOverride[sel.dataset.line];
+      xlPlan(s);
+    });
+  });
   const wb = gi('xl-write-s' + s);
   if (wb) wb.disabled = !xlBook;
   if (st && !st.textContent) st.textContent = '';
@@ -2961,7 +3001,7 @@ function xlPlan(s) {
 async function xlLoad(s) {
   const st = gi('xl-status-s' + s);
   try {
-    if (st) st.textContent = 'Opening the workbook…';
+    xlSetStatus(s, 'Opening the workbook…');
     /* the picker MUST be asked for inside the click (the browser wants the
        user gesture) — so ask first, load the Excel engine while the user picks */
     let pickPromise;
@@ -2983,7 +3023,7 @@ async function xlLoad(s) {
     pickPromise.catch(() => {});
     const ExcelJS = await xlEngine();
     const picked = await pickPromise;
-    if (!picked) { if (st) st.textContent = ''; return false; }
+    if (!picked) { xlSetStatus(s, ''); return false; }
     if (typeof picked.getFile === 'function') {          /* a real file handle */
       xlHandle = picked; xlName = picked.name;
       const f = await picked.getFile();
@@ -3000,26 +3040,26 @@ async function xlLoad(s) {
     xlPlan(s);
     return true;
   } catch (e) {
-    if (e && e.name === 'AbortError') { if (st) st.textContent = ''; return false; }
-    if (st) st.textContent = 'ERROR: ' + e.message;
+    if (e && e.name === 'AbortError') { xlSetStatus(s, ''); return false; }
+    xlSetStatus(s, 'ERROR: ' + e.message, true);
     return false;
   }
 }
 async function xlOpen(s) {
   const st = gi('xl-status-s' + s);
-  if (await xlLoad(s) && st) st.textContent = '✅ ' + xlName + ' is open — check the plan below, then press "Write into the file".';
+  if (await xlLoad(s)) xlSetStatus(s, '✅ ' + xlName + ' is open — check the plan below, then press "Write into the file".');
 }
 async function xlOpenWrite(s) {
   const st = gi('xl-status-s' + s);
   if (!await xlLoad(s)) return;
-  if (st) st.textContent = '✅ ' + xlName + ' is open — writing now…';
+  xlSetStatus(s, '✅ ' + xlName + ' is open — writing now…');
   await xlWrite(s);
 }
 async function xlWrite(s) {
   const st = gi('xl-status-s' + s);
-  if (!xlBook) { if (st) st.textContent = 'Open your Excel file first.'; return; }
+  if (!xlBook) { xlSetStatus(s, 'Open your Excel file first.', true); return; }
   try {
-    if (st) st.textContent = 'Writing into the workbook…';
+    xlSetStatus(s, 'Writing into the workbook…');
     const ExcelJS = await xlEngine();
     let book = xlBook;
     if (xlHandle && !xlFresh) {                      /* re-read: never lose Excel's own edits */
@@ -3032,8 +3072,15 @@ async function xlWrite(s) {
     book.modified = now;
     const done = [];
     for (const L of xlChosenLines(s)) {
-      const ws = xlFindSheet(book, L.sheet);
-      if (!ws) { done.push('⚠ ' + L.title + ': sheet not found'); continue; }
+      const ov = xlOverride[L.id];
+      let hit = null;
+      if (ov) {
+        const w = (book.worksheets || []).find(x => x.name === ov);
+        if (w && xlHeader(w, L.n)) hit = { ws: w, how: 'manual' };
+      }
+      if (!hit) hit = xlFindSheet(book, L.sheet, L.n);
+      if (!hit) { done.push('⚠ ' + L.title + ': sheet not found — pick it in the plan'); continue; }
+      const ws = hit.ws;
       const h = xlHeader(ws, L.n);
       if (!h) { done.push('⚠ ' + L.title + ': sheet columns do not match'); continue; }
       const rows = xlRowsFor(L, s);
@@ -3041,7 +3088,7 @@ async function xlWrite(s) {
       let r = xlNextRow(ws, h.cDate, h.cAvg);
       const start = r;
       rows.forEach(t => { xlWriteRow(ws, r, h, L, t, r - 1); r++; });
-      done.push('📥 ' + rows.length + ' row(s) → ' + ws.name + ' row ' + start);
+      done.push('📥 ' + rows.length + ' row(s) → ' + ws.name + ' row ' + start + (hit.how === 'structure' ? ' (matched by columns)' : ''));
     }
     const buf = await book.xlsx.writeBuffer();
     if (xlHandle) {
@@ -3056,9 +3103,9 @@ async function xlWrite(s) {
       setTimeout(() => URL.revokeObjectURL(a.href), 8000);
     }
     xlPlan(s);
-    if (st) st.textContent = (xlHandle ? '✅ ' : '⬇️ ') + done.join(' · ') + (xlHandle ? ' — the file was updated in place (no download).' : ' — download the updated file and replace the old one.');
+    xlSetStatus(s, (xlHandle ? '✅ ' : '⬇️ ') + done.join(' · ') + (xlHandle ? ' — the file was updated in place (no download).' : ' — download the updated file and replace the old one.'));
   } catch (e) {
-    if (st) st.textContent = 'ERROR: ' + e.message;
+    xlSetStatus(s, 'ERROR: ' + e.message, true);
   }
 }
 
