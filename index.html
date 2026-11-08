@@ -1,0 +1,2720 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5">
+<title>Soap Bar Daily Log Pro v2 — Cloud Sync</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Soap Log Pro">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0f766e">
+<style>
+:root {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --ink: #0f172a;
+  --mut: #475569;
+  --line: #cbd5e1;
+  --acc: #0f766e;
+  --acc-hover: #0d9488;
+  --on: #ffffff;
+  --warn: #fef3c7;
+  --warn-ink: #92400e;
+  --warn-line: #f59e0b;
+  --danger: #dc2626;
+  --ok: #059669;
+  --head: #e2e8f0;
+  --shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1316;
+    --card: #132024;
+    --ink: #e2e8f0;
+    --mut: #94a3b8;
+    --line: #263940;
+    --acc: #14b8a6;
+    --acc-hover: #2dd4bf;
+    --on: #042f2e;
+    --warn: #451a03;
+    --warn-ink: #fde68a;
+    --warn-line: #d97706;
+    --danger: #ef4444;
+    --ok: #10b981;
+    --head: #1b2e35;
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding-bottom: 72px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 14px/1.45 "Inter", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+nav .brand {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+}
+nav .badge-v2 {
+  background: var(--acc);
+  color: var(--on);
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+nav a.tab {
+  color: var(--ink);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 13.5px;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+nav a.tab:hover { background: var(--head); }
+nav a.tab.on {
+  background: var(--acc);
+  color: var(--on);
+}
+nav label.as {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink);
+  font-size: 12.5px;
+  background: var(--bg);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+nav label.as input, nav label.as select {
+  width: auto;
+  padding: 2px 5px;
+  font-size: 12.5px;
+}
+main {
+  max-width: 1540px;
+  margin: 0 auto;
+  padding: 14px;
+}
+section.pg {
+  display: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow);
+}
+section.pg.on { display: block; }
+h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+h3 { margin: 18px 0 8px; font-size: 15px; color: var(--acc); }
+p.n { margin: 6px 0 0; color: var(--mut); font-size: 12.5px; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--mut);
+  gap: 3px;
+  font-weight: 600;
+}
+input, select, textarea {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 6px 8px;
+  width: 100%;
+}
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--acc);
+  outline-offset: -1px;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 7px;
+  border: 1px solid var(--acc);
+  background: transparent;
+  color: var(--acc);
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+button:hover { background: color-mix(in srgb, var(--acc) 12%, transparent); }
+button.p {
+  background: var(--acc);
+  color: var(--on);
+}
+button.p:hover { background: var(--acc-hover); }
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+.bar {
+  display: flex;
+  gap: 8px;
+  margin: 12px 0 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.grp {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  padding: 8px;
+  margin: 0 0 20px;
+  background: color-mix(in srgb, var(--bg) 45%, var(--card));
+}
+.grp .pw { margin: 0; zoom: var(--z, 1); }
+.pw { overflow-x: auto; margin: 6px 0; }
+.pt {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: max-content;
+  font-size: 13px;
+  background: var(--card);
+}
+.pt th, .pt td {
+  border: 1px solid var(--ink);
+  padding: 0;
+  text-align: center;
+  height: 36px;
+  min-width: 66px;
+}
+.pt th {
+  background: var(--head);
+  padding: 4px 8px;
+  white-space: nowrap;
+  font-weight: 700;
+}
+.pt .sp td {
+  background: var(--hc);
+  color: #0f172a;
+  font-weight: 700;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.pt input {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  padding: 6px 4px;
+  width: 100%;
+  min-width: 68px;
+  font-size: 14px;
+  font-weight: 500;
+  -moz-appearance: textfield;
+}
+.pt td input[id$="_p"] { min-width: 195px; font-weight: 600; }
+.pt td input[id$="_bn"] { min-width: 125px; font-family: monospace; font-size: 14px; font-weight: 700; }
+.pt td input[id$="_ffa"], .pt td input[id$="_fa"] {
+  min-width: 60px;
+  width: 60px;
+  padding: 6px 2px;
+  text-align: center;
+  font-weight: 700;
+  color: var(--acc);
+}
+.pt td.wc { min-width: 0; width: 62px; padding: 0; }
+.pt td.wc input { min-width: 0; padding: 6px 0; font-size: 14px; text-align: center; }
+.pt td.mn { font-weight: 700; font-size: 14px; padding: 0 8px; }
+.pt td.mn.bad { background: var(--warn); color: var(--warn-ink); }
+.wrap {
+  overflow: auto;
+  max-height: 68vh;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+table.dt {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+table.dt th, table.dt td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: center;
+  font-size: 13.5px;
+}
+table.dt thead th {
+  height: 28px;
+  position: sticky;
+  top: 0;
+  background: var(--head);
+  z-index: 2;
+  font-weight: 700;
+}
+table.dt thead tr:nth-child(2) th { top: 28px; }
+table.dt tbody tr:nth-child(even) {
+  background: color-mix(in srgb, var(--head) 30%, transparent);
+}
+td[contenteditable] { min-width: 62px; cursor: text; }
+td[contenteditable]:focus {
+  outline: 2px solid var(--acc);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--acc) 10%, var(--card));
+}
+td.bad, input.bad {
+  background: var(--warn) !important;
+  color: var(--warn-ink) !important;
+  border-color: var(--warn-line) !important;
+}
+td.a { font-weight: 700; }
+td.fa-cell {
+  font-weight: 700;
+  color: var(--acc);
+}
+
+/* Entry View Styling */
+#ent .card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin: 0 0 12px;
+  background: color-mix(in srgb, var(--bg) 35%, var(--card));
+}
+#ent .lines3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+@media (max-width: 820px) {
+  #ent .lines3 { grid-template-columns: 1fr; }
+}
+#ent .lines3 .card { padding: 10px; margin: 0; background: var(--card); }
+#ent .lnhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--line);
+}
+#ent .lnhead b { font-size: 14.5px; }
+#ent .lnhead .t { font-size: 11.5px; color: var(--mut); width: 100%; }
+#ent .lnhead .n {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--acc);
+  border: 1px solid var(--acc);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+#ent .qc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+#ent .wlist {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  margin-top: 4px;
+  direction: ltr;
+}
+@media (max-width: 480px) {
+  #ent .wlist { grid-template-columns: 1fr; }
+}
+#ent .wcell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+#ent .wcell > span {
+  flex: 0 0 24px;
+  text-align: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--mut);
+  background: var(--head);
+  border-radius: 6px;
+  padding: 6px 0;
+}
+#ent .wcell input {
+  text-align: center;
+  font-weight: 600;
+  font-size: 14.5px;
+}
+#ent .wcell input.fixed { border-color: var(--acc); }
+#ent .avg { margin-top: 8px; }
+#ent .avg input { font-weight: 700; font-size: 15px; text-align: center; }
+#ent input[readonly] { background: var(--head); color: var(--ink); }
+.chk-row {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.chk-row input { width: auto; }
+.msg {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  display: none;
+  line-height: 1.5;
+  border: 1px solid var(--line);
+}
+.msg.ok {
+  display: block;
+  background: color-mix(in srgb, var(--ok) 15%, transparent);
+  border-color: var(--ok);
+}
+.msg.no {
+  display: block;
+  background: color-mix(in srgb, var(--danger) 15%, transparent);
+  border-color: var(--danger);
+}
+.msg.wn {
+  display: block;
+  background: var(--warn);
+  color: var(--warn-ink);
+  border-color: var(--warn-line);
+  font-weight: 600;
+}
+
+/* Status Pill & Modals */
+#syncSt {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  white-space: nowrap;
+}
+#syncSt.ok { border-color: var(--ok); color: var(--ok); }
+#syncSt.busy { border-color: var(--warn-line); color: var(--warn-line); }
+#syncSt.err { border-color: var(--danger); color: var(--danger); }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 14, 16, 0.65);
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-backdrop[hidden] { display: none; }
+.modal-box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.35);
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-weight: 700;
+  font-size: 16px;
+}
+.modal-head button {
+  border: 0;
+  background: transparent;
+  color: var(--mut);
+  font-size: 22px;
+  padding: 0 6px;
+}
+#fab {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -4px 14px rgba(0, 0, 0, 0.06);
+}
+label.btn {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  color: var(--acc);
+  border: 1px solid var(--acc);
+  border-radius: 7px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+</style>
+<link rel="manifest" href="manifest.webmanifest">
+<script>
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</head>
+<body>
+
+<nav>
+  <div class="brand">
+    <span>🧼 Soap Bar Daily Log</span>
+    <span class="badge-v2">PRO v2.0</span>
+  </div>
+  <a href="#ent" class="tab on" data-pg="ent">⚡ Entry</a>
+  <a href="#sh1" class="tab" data-pg="sh1">Shift A</a>
+  <a href="#sh2" class="tab" data-pg="sh2">Shift B</a>
+  <a href="#sh3" class="tab" data-pg="sh3">Shift C</a>
+  <a href="#set" class="tab" data-pg="set">⚙️ Settings</a>
+
+  <label class="as" title="Automatically propagate Batch No. across all shifts and batches of the day">
+    <input type="checkbox" id="syncBnAll" checked>
+    <span>Sync Batch All Day</span>
+  </label>
+
+  <label class="as">
+    <span>Line 3:</span>
+    <select id="l3sel">
+      <option value="royal">Royal (6 soaps - 110g)</option>
+      <option value="lemon">Lemon (5 soaps - 150g)</option>
+    </select>
+  </label>
+
+  <label class="as">
+    <span>Img:</span>
+    <select class="isz">
+      <option value="25">25%</option>
+      <option value="50">50%</option>
+      <option value="75">75%</option>
+      <option value="100" selected>100%</option>
+    </select>
+  </label>
+
+  <button id="pullBtn" type="button" title="Pull latest data from Cloud">⬇ Pull</button>
+  <button id="pushBtn" class="p" type="button" title="Save and sync changes to Cloud">⬆ Save &amp; Sync</button>
+  <button id="syncBtn" type="button">☁️ Cloud</button>
+  <span id="syncSt" class="ok">Ready</span>
+  <button id="install" type="button" hidden>📲 Install App</button>
+</nav>
+
+<main>
+  <!-- ENTRY PAGE -->
+  <section id="ent" class="pg on">
+    <h2>
+      <span>⚡ Weights &amp; Sheet1 Entry</span>
+      <span class="stt" id="st"></span>
+    </h2>
+    <div class="card">
+      <div class="grid">
+        <label>Shift
+          <select id="e_sh">
+            <option value="1">Shift A (08:30 - 15:30)</option>
+            <option value="2">Shift B (16:30 - 23:30)</option>
+            <option value="3">Shift C (00:30 - 07:30)</option>
+          </select>
+        </label>
+        <label>Batch
+          <select id="e_bt">
+            <option value="1">Batch 1 (Hours 1 - 3)</option>
+            <option value="2">Batch 2 (Hours 4 - 6)</option>
+            <option value="3">Batch 3 (Hours 7 - 8)</option>
+          </select>
+        </label>
+        <label>Line 3 Product
+          <select id="e_vr">
+            <option value="royal">Royal Lather (6 soaps)</option>
+            <option value="lemon">Lemon Blossom (5 soaps)</option>
+          </select>
+        </label>
+        <label>Shift Date
+          <input id="e_date" type="text" placeholder="DD/MM/YYYY">
+        </label>
+      </div>
+    </div>
+
+    <div id="e_lines"></div>
+
+    <div class="card">
+      <div class="msg" id="e_allwarn"></div>
+      <div class="bar">
+        <button id="e_save" class="p" type="button">💾 Save &amp; Sync</button>
+        <button id="e_regen_batch" type="button">🎲 Regenerate Batch</button>
+        <button id="e_clear" class="danger" type="button">🗑 Clear (Keep Batch No.)</button>
+        <label class="chk-row" style="margin-left:auto">
+          <input type="checkbox" id="e_snd" checked>
+          <span>🔔 Sound on save</span>
+        </label>
+      </div>
+      <div class="msg" id="e_msg"></div>
+    </div>
+  </section>
+
+  <!-- SHIFT PAGES CONTAINER -->
+  <div id="lines"></div>
+
+  <!-- SETTINGS PAGE -->
+  <section id="set" class="pg">
+    <h2>⚙️ Settings, Backup &amp; Cloud Diagnostics</h2>
+    <div id="sg" class="grid"></div>
+    <div class="bar">
+      <button id="all" class="p" type="button">🎲 Regenerate All Shifts</button>
+      <button id="ex" type="button">📥 Export JSON Backup</button>
+      <label class="btn">📤 Import JSON Backup<input type="file" id="imp" accept=".json" hidden></label>
+      <button id="diagBtn" type="button">🔍 Cloud Diagnostics</button>
+      <button id="rs" class="danger" type="button">🔄 Reset Local Cache &amp; Pull from Cloud</button>
+    </div>
+    <div id="diagBox" class="msg" style="white-space:pre-wrap;font-family:monospace;display:none"></div>
+  </section>
+</main>
+
+<!-- FLOATING ACTION BAR (NO ARROWS) -->
+<div id="fab">
+  <label class="chk-row"><input type="checkbox" id="auto" checked><span>Auto-save &amp; sync</span></label>
+  <button class="p" type="button" data-sv="1">💾 Save &amp; Sync</button>
+  <span class="stt"></span>
+</div>
+
+<!-- CLOUD SYNC SETTINGS MODAL -->
+<div id="syncModal" class="modal-backdrop" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <span>☁️ Cloud Sync Settings (Firebase v2)</span>
+      <button id="syncClose" type="button">&times;</button>
+    </div>
+    <label style="margin-bottom:10px">
+      <span>Cloud Path (Firebase RTDB URL)</span>
+      <textarea id="syncCodeInp" rows="2" spellcheck="false"></textarea>
+    </label>
+    <label style="margin-bottom:10px">
+      <span>Encryption PIN (Default: 2780)</span>
+      <input id="syncPinInp" type="text" inputmode="numeric" placeholder="2780">
+    </label>
+    <div class="bar">
+      <button id="syncSaveBtn" class="p" type="button">Save &amp; Sync Now</button>
+      <button id="syncForcePushBtn" type="button">Force Push All Local Data</button>
+      <button id="syncCopyUrlBtn" type="button">Copy Cloud URL</button>
+    </div>
+    <div id="syncModalMsg" class="msg"></div>
+  </div>
+</div>
+
+<!-- CUSTOM CONFIRM MODAL (Canvas-Safe, replaces window.confirm) -->
+<div id="confirmModal" class="modal-backdrop" hidden>
+  <div class="modal-box">
+    <div class="modal-head">
+      <span id="confirmTitle">Confirm Action</span>
+      <button id="confirmClose" type="button">&times;</button>
+    </div>
+    <p id="confirmText" style="margin:8px 0 16px;font-size:14px;line-height:1.5"></p>
+    <div class="bar" style="justify-content:flex-end">
+      <button id="confirmCancel" type="button">Cancel</button>
+      <button id="confirmOk" class="p" type="button">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================================
+   1. CORE CONFIGURATION & PRODUCT SPECIFICATIONS
+   ============================================================================ */
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+const gi = id => document.getElementById(id);
+
+const STORAGE_PREFIX = 'soapProV2_';
+const DEFAULT_CLOUD_URL = 'https://soap-lab-shift-sync-default-rtdb.europe-west1.firebasedatabase.app/lab/soap-pro-v2-9f8e4d2c1b7a6053e4d89a12.json';
+const DEFAULT_PIN = '2780';
+
+function sRead(k, defVal) {
+  try {
+    const v = localStorage.getItem(STORAGE_PREFIX + k);
+    return v === null ? defVal : v;
+  } catch (e) {
+    return defVal;
+  }
+}
+function sWrite(k, val) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + k, val);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+let L3k = sRead('L3Variant', 'royal') === 'lemon' ? 'lemon' : 'royal';
+
+const P3 = {
+  lemon: {
+    title: 'Line 3 - Savannah Lemon Blossom&Orange',
+    sheet: 'Line 3',
+    p: 'Savannah Lemon Blossom&Orange',
+    b: '3100260901',
+    n: 5,
+    c: [151.90, 151.20, 151.10, 151.00, 151.10],
+    m: 16.5,
+    t: 45.0,
+    fa: 0.05,
+    gm: 150,
+    amin: 149.5,
+    amax: 150.5,
+    cl: [0.75, 0.05],
+    gl: [7.50, 0.10]
+  },
+  royal: {
+    title: 'Line 3 - Royal (90-10)',
+    sheet: 'Line 3 Royal (90-10)',
+    p: 'Royal Lather',
+    b: '3100241612',
+    n: 6,
+    c: [108.36, 109.51, 109.81, 109.71, 110.51, 111.01],
+    m: 16.9,
+    t: 44.8,
+    fa: 0.05,
+    gm: 110,
+    amin: 109.5,
+    amax: 110.5,
+    cl: [0.55, 0.10],
+    gl: [7.55, 0.10]
+  }
+};
+
+function buildLinesConfig() {
+  return [
+    {
+      id: 'l1',
+      title: 'Line 1 - Savannah',
+      sheet: 'Line 1 Savannah',
+      hc: '#9cc3ee',
+      p: 'Savannah Classic',
+      b: '3100241611',
+      n: 8,
+      c: [109.71, 109.72, 108.34, 108.92, 109.91, 109.81, 110.21, 110.11],
+      m: 16.5,
+      t: 45.0,
+      fa: 0.05,
+      gm: 110,
+      amin: 109.5,
+      amax: 110.5,
+      cl: [0.55, 0.10],
+      gl: [7.55, 0.10]
+    },
+    {
+      id: 'l2',
+      title: 'Line 2 - Savannah (771)',
+      sheet: 'Line 2 Savannah (771)',
+      hc: '#b6dba3',
+      p: 'Savannah Classic',
+      b: '3100241611',
+      n: 10,
+      c: [110.71, 110.68, 110.61, 109.61, 110.01, 110.21, 110.22, 110.31, 111.01, 110.51],
+      m: 16.5,
+      t: 45.0,
+      fa: 0.05,
+      gm: 110,
+      amin: 109.5,
+      amax: 110.5,
+      cl: [0.55, 0.10],
+      gl: [7.55, 0.10]
+    },
+    Object.assign({ id: 'l3', hc: '#f5d08b' }, P3[L3k])
+  ];
+}
+
+let LINES = buildLinesConfig();
+const SHIFTS = [
+  [1, '08:30-15:30', 8],
+  [2, '16:30-23:30', 16],
+  [3, '00:30-07:30', 0]
+];
+const SN = { 1: 'A', 2: 'B', 3: 'C' };
+const TD = { 1: '08:30', 2: '17:30', 3: '01:30' };
+const BL = [[0, 3], [3, 6], [6, 8]];
+const SPEC = ['14-16', '1.5 Max', '0.05 Max', '0.8 Max', '5-7', 'MIN 69', '42-44'];
+
+const hrs = st => [...Array(8)].map((_, i) => String(st + i).padStart(2, '0') + ':30');
+const pid = (L, s, b) => L.id + 's' + s + 'b' + b;
+
+const _iso = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+const dmY = s => {
+  const p = String(s || '').trim().split('-');
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(s || '').trim();
+};
+const todayDMY = () => dmY(_iso());
+const yestDMY = () => {
+  const d = new Date(_iso() + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - 1);
+  return dmY(d.toISOString().slice(0, 10));
+};
+const dtf = v => {
+  v = String(v || '').trim();
+  return v.indexOf('-') > 0 ? v.split('-').reverse().join('/') : v;
+};
+const toEnDigits = v => String(v == null ? '' : v)
+  .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 1632)
+  .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 1776)
+  .replace(/[\u066B\u060C]/g, '.');
+const fixW = v => {
+  v = toEnDigits(v).trim();
+  if (/^-?\d+\.\d$/.test(v)) return v + '1';
+  if (/^-?\d+$/.test(v)) return v + '.01';
+  return v;
+};
+
+/* Deterministic Pseudo-Random Variation:
+   Ensures Phone and PC calculate the exact same hourly variations from the same Sheet1 numbers! */
+function hashStr(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function seededRnd(base, variance, decimals, seedKey) {
+  const h = hashStr(String(seedKey));
+  const unit = (h % 100000) / 100000;
+  const delta = (unit * 2 - 1) * variance;
+  return +(base + delta).toFixed(decimals);
+}
+
+/* ============================================================================
+   2. UNIFIED SINGLE-SOURCE-OF-TRUTH STATE & PER-FIELD TIMESTAMPS
+   ============================================================================ */
+const STATE = {
+  v: {},      // active key -> string value
+  ft: {},     // active key -> timestamp (0 = untouched default, >0 = real user/cloud edit)
+  maxTs: 0,   // highest seen timestamp (prevents clock skew issues)
+  updatingDOM: false
+};
+
+function nextEditTimestamp() {
+  const now = Date.now();
+  const ts = Math.max(now, (STATE.maxTs || 0) + 1);
+  STATE.maxTs = ts;
+  return ts;
+}
+
+function getBatchSeed(L, s, b) {
+  const k = 'seed_' + pid(L, s, b);
+  return STATE.v[k] || '1';
+}
+
+/* Modal Confirmation Helper (replaces window.confirm) */
+function askConfirm(title, message, onConfirm) {
+  const m = gi('confirmModal');
+  gi('confirmTitle').textContent = title;
+  gi('confirmText').textContent = message;
+  m.removeAttribute('hidden');
+  const close = () => m.setAttribute('hidden', '');
+  gi('confirmClose').onclick = close;
+  gi('confirmCancel').onclick = close;
+  gi('confirmOk').onclick = () => {
+    close();
+    onConfirm();
+  };
+}
+
+/* Toast & Audio Feedback */
+let AC = null;
+function beep(ok) {
+  if (gi('e_snd') && !gi('e_snd').checked) return;
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+    o.connect(g);
+    g.connect(AC.destination);
+    if (ok) {
+      o.type = 'sine';
+      o.frequency.setValueAtTime(760, t);
+      o.frequency.setValueAtTime(1320, t + 0.14);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.36);
+      o.start(t);
+      o.stop(t + 0.38);
+    } else {
+      o.type = 'square';
+      o.frequency.setValueAtTime(300, t);
+      o.frequency.setValueAtTime(190, t + 0.14);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.14, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+      o.start(t);
+      o.stop(t + 0.34);
+    }
+  } catch (e) {}
+}
+
+function pToast(txt, ok = true) {
+  let t = gi('pToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'pToast';
+    t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:9999;padding:11px 18px;border-radius:10px;font:600 13.5px system-ui;color:#fff;box-shadow:0 6px 20px rgba(0,0,0,.3);display:none;max-width:90vw;text-align:center';
+    document.body.appendChild(t);
+  }
+  t.textContent = txt;
+  t.style.whiteSpace = 'pre-line';
+  t.style.background = ok ? '#059669' : '#dc2626';
+  t.style.display = 'block';
+  clearTimeout(t._h);
+  t._h = setTimeout(() => { t.style.display = 'none'; }, 3200);
+}
+
+function stamp(t) {
+  $$('#st, .stt').forEach(x => { x.textContent = t; });
+  return t;
+}
+
+/* ============================================================================
+   3. BUILD DOM: SETTINGS, SHIFTS (SHEET1 + 8-HR TABLES), AND ENTRY VIEW
+   ============================================================================ */
+function buildAllDOM() {
+  LINES = buildLinesConfig();
+  gi('sg').innerHTML = LINES.map(L =>
+    `<label>${L.title}: Sheet row of Shift A (optional)<input id="${L.id}_r" type="text" inputmode="numeric" lang="en" dir="ltr" value="" placeholder="e.g. 5"></label>`
+  ).join('');
+
+  const SZO = [25, 50, 75, 100].map(v => `<option value="${v}"${v === 100 ? ' selected' : ''}>${v}%</option>`).join('');
+
+  const formHtml = (L, s, b) => {
+    const p = pid(L, s, b), n = L.n;
+    return `<div class="pw"><table class="pt" style="--hc:${L.hc}">
+      <tr>
+        <th>Product Name</th>
+        <th>Batch No.</th>
+        <th>M/C</th>
+        <th>FFA</th>
+        <th>FA (FAL)</th>
+        <th colspan="${n}">NET Weight ${L.gm} GM</th>
+        <th>Avrg</th>
+      </tr>
+      <tr class="sp">
+        <td>Line ${L.id.slice(1)}</td>
+        <td></td>
+        <td>(14-16)</td>
+        <td>1.5 Max</td>
+        <td>0.05 Max</td>
+        ${[...Array(n)].map((_, k) => `<td class="wc">${k + 1}</td>`).join('')}
+        <td class="avs" data-l="${L.id}" data-s="${s}"></td>
+      </tr>
+      <tr>
+        <td><input id="${p}_p" value="${L.p}"></td>
+        <td><input id="${p}_bn" value="${L.b}" inputmode="numeric"></td>
+        <td><input id="${p}_m" value="${L.m.toFixed(2)}" data-n="1" inputmode="decimal"></td>
+        <td><input id="${p}_ffa" value="" placeholder="—" data-n="1" inputmode="decimal"></td>
+        <td><input id="${p}_fa" value="${L.fa.toFixed(2)}" placeholder="${L.fa.toFixed(2)}" data-n="1" inputmode="decimal" title="FA source for 8-hour Data table"></td>
+        ${[...Array(n)].map((_, k) => `<td class="wc"><input id="${p}_c${k}" value="${L.c[k].toFixed(2)}" data-n="1" inputmode="decimal"></td>`).join('')}
+        <td class="mn" id="${p}_mean"></td>
+      </tr>
+    </table></div>`;
+  };
+
+  const headHtml = L => `<thead>
+    <tr>
+      <th rowspan="2">Date</th>
+      <th rowspan="2">Time</th>
+      <th rowspan="2">Product Name</th>
+      <th rowspan="2">Batch No.</th>
+      <th rowspan="2">M/C</th>
+      <th rowspan="2">FFA</th>
+      <th rowspan="2" title="Sourced automatically from Sheet1">FA (Sheet1)</th>
+      <th rowspan="2">Cl</th>
+      <th rowspan="2">Gly</th>
+      <th rowspan="2">TFM</th>
+      <th rowspan="2">Temp</th>
+      <th colspan="${L.n}">NET Weight ${L.gm} GM</th>
+      <th rowspan="2">Avrg weight</th>
+    </tr>
+    <tr>${[...Array(L.n)].map((_, i) => `<th>${i + 1}</th>`).join('')}</tr>
+  </thead>`;
+
+  gi('lines').innerHTML = SHIFTS.map(([s, r]) => `
+    <section class="pg" id="sh${s}">
+      <h2>
+        <span>📋 Shift ${SN[s]} (${r})</span>
+        <button data-gs="${s}" type="button">🎲 Regenerate Shift ${SN[s]}</button>
+      </h2>
+      <div class="grid">
+        <label>Date (DD/MM/YYYY)<input id="date${s}" type="text" value="${s === 3 ? yestDMY() : todayDMY()}"></label>
+        <label>Variation +/-<input id="var${s}" type="text" inputmode="decimal" lang="en" dir="ltr" value="0.2"></label>
+        <label>Test hours (Cl / Gly / TFM)<input id="tests${s}" type="text" value="${TD[s]}"></label>
+      </div>
+      ${LINES.map(L => `
+        <p class="n"><b>${L.title.split(' - ')[0]}</b> QC &amp; Spec Settings</p>
+        <div class="grid">
+          <label>Cl base<input id="chl${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="${L.cl[0]}"></label>
+          <label>Cl +/-<input id="chlv${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="${L.cl[1]}"></label>
+          <label>Gly base<input id="gly${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="${L.gl[0]}"></label>
+          <label>Gly +/-<input id="glyv${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="${L.gl[1]}"></label>
+          <label>Temp base<input id="tmp${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="${L.t.toFixed(1)}"></label>
+          <label>Temp +/-<input id="tmpv${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="0.5"></label>
+          <label>Avrg min<input id="amin${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="${L.amin}"></label>
+          <label>Avrg max<input id="amax${s}${L.id}" type="text" inputmode="decimal" lang="en" dir="ltr" value="${L.amax}"></label>
+        </div>
+      `).join('')}
+
+      <h3>Sheet1 Forms (#1: Hours 1-3 | #2: Hours 4-6 | #3: Hours 7-8)</h3>
+      ${[1, 2, 3].map(b => `
+        <div class="grp">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <b style="font-size:13px;color:var(--acc)">Sheet1 — Batch #${b} (Hours ${BL[b - 1][0] + 1} to ${BL[b - 1][1]})</b>
+            <button data-gb="${s}_${b}" type="button" style="padding:3px 8px;font-size:12px">🎲 Regenerate Batch</button>
+          </div>
+          ${LINES.map(L => formHtml(L, s, b)).join('')}
+          <div class="bar">
+            <label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink);font-size:13px">
+              <span>Image size:</span>
+              <select class="isz" style="width:auto">${SZO}</select>
+            </label>
+            ${LINES.map(L => `
+              <button data-img="${L.id}s${s}b${b}" type="button">📤 Share ${L.title.split(' - ')[0]}</button>
+              <button data-imgp="${L.id}s${s}b${b}" type="button">🖼 Save PNG ${L.title.split(' - ')[0]}</button>
+            `).join('')}
+            <button class="p" data-imgg="s${s}b${b}" type="button">📤 Share All 3</button>
+            <button data-imgs="s${s}b${b}" type="button">🖼 Save All 3 PNG</button>
+            <button data-sv="1" type="button">💾 Save</button>
+          </div>
+        </div>
+      `).join('')}
+
+      <h3>8-Hour Data Tables</h3>
+      <div class="bar">
+        <b>All 3 Lines:</b>
+        <button class="p" data-xla="${s}" type="button">📊 Export All 3 Lines to Excel (One Sheet)</button>
+      </div>
+      ${LINES.map(L => `
+        <div class="bar">
+          <b>${L.title}</b>
+          <button class="p" data-copy="${L.id}" data-s="${s}" type="button">📋 Copy ${L.title.split(' - ')[0]} Rows</button>
+          <button data-xl="${L.id}" data-s="${s}" type="button">📊 Export to Excel (.xlsx)</button>
+          <button data-sv="1" type="button">💾 Save</button>
+        </div>
+        <div class="wrap">
+          <table class="dt">${headHtml(L)}<tbody id="${L.id}_b${s}"></tbody></table>
+        </div>
+      `).join('')}
+    </section>
+  `).join('');
+
+  buildEntryCards();
+}
+
+function buildEntryCards() {
+  gi('e_lines').innerHTML = `<div class="lines3">${LINES.map(L => {
+    const n = L.n, parts = L.title.split(' - ');
+    return `<div class="card" data-l="${L.id}">
+      <div class="lnhead">
+        <b>${parts[0]}</b>
+        <span class="n">${n} soaps (${L.gm}g)</span>
+        <span class="t">${parts[1] || ''}</span>
+      </div>
+      <label>Product Name
+        <input class="e-p" data-l="${L.id}" type="text">
+      </label>
+      <label style="margin-top:6px">Batch No.
+        <input class="e-bn" data-l="${L.id}" type="text" inputmode="numeric" style="font-weight:700;font-family:monospace">
+      </label>
+      <div class="qc-grid" style="margin-top:6px">
+        <label>M/C (Moisture)
+          <input class="e-moi" data-l="${L.id}" type="text" inputmode="decimal" placeholder="16.50">
+        </label>
+        <label title="Synced directly with Sheet1 & 8-hour Data table">FA (Sheet1)
+          <input class="e-fa" data-l="${L.id}" type="text" inputmode="decimal" placeholder="0.05" style="font-weight:700;color:var(--acc)">
+        </label>
+        <label>FFA
+          <input class="e-ffa" data-l="${L.id}" type="text" inputmode="decimal" placeholder="—">
+        </label>
+      </div>
+      <label>NET Weight ${L.gm} GM</label>
+      <div class="wlist">
+        ${[...Array(n)].map((_, i) => `
+          <div class="wcell">
+            <span>${i + 1}</span>
+            <input class="e-w" data-l="${L.id}" data-i="${i}" type="text" inputmode="decimal" placeholder="—">
+          </div>
+        `).join('')}
+      </div>
+      <div class="avg">
+        <label>Avrg Weight (${L.amin} - ${L.amax})
+          <input class="e-avg" data-l="${L.id}" readonly>
+        </label>
+      </div>
+      <div class="msg wn e-warn" data-l="${L.id}"></div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ============================================================================
+   4. REACTIVE DATA ENGINE: UNIFIED SETTER, BATCH PROPAGATION & TABLE RENDERING
+   ============================================================================ */
+function getVal(id) {
+  if (STATE.v[id] !== undefined) return String(STATE.v[id]);
+  const el = gi(id);
+  return el ? String(el.value || '') : '';
+}
+
+function getNum(id, fallback = 0) {
+  const v = parseFloat(getVal(id));
+  return isNaN(v) ? fallback : v;
+}
+
+function isOutOfSpec(L, s, meanVal) {
+  const lo = getNum('amin' + s + L.id, L.amin);
+  const hi = getNum('amax' + s + L.id, L.amax);
+  return !isNaN(lo) && !isNaN(hi) && (meanVal < lo || meanVal > hi);
+}
+
+/* Set a single field in STATE + DOM with timestamp tracking */
+function setSingleKey(id, val, ts) {
+  val = toEnDigits(val);
+  STATE.v[id] = val;
+  if (ts !== undefined) {
+    STATE.ft[id] = ts;
+    if (ts > STATE.maxTs) STATE.maxTs = ts;
+  }
+  const el = gi(id);
+  if (el && document.activeElement !== el && el.value !== val) {
+    el.value = val;
+  }
+}
+
+/* Master Setter: called by Entry, Sheet1, Data Table, Paste, or Regenerate.
+   Handles Batch No. full-day propagation and Sheet1 -> 8-Hour Table sync! */
+function updateField(id, rawVal, opts = {}) {
+  const ts = opts.ts !== undefined ? opts.ts : nextEditTimestamp();
+  let val = toEnDigits(rawVal);
+  if (opts.fixWeight && val.trim() !== '' && /^-?\d+(\.\d+)?$/.test(val.trim())) {
+    val = fixW(val.trim());
+  }
+
+  setSingleKey(id, val, ts);
+
+  // Check if this is a Batch Number (`l1s1b1_bn`) and propagate across shift & day if enabled
+  const bnMatch = id.match(/^(l\d)s(\d)b(\d)_bn$/);
+  if (bnMatch && !opts.skipBatchPropagation) {
+    const lineId = bnMatch[1];
+    const curShift = +bnMatch[2];
+    const syncAllDay = gi('syncBnAll') ? gi('syncBnAll').checked : true;
+    if (syncAllDay) {
+      SHIFTS.forEach(([s]) => {
+        [1, 2, 3].forEach(b => {
+          const targetId = `${lineId}s${s}b${b}_bn`;
+          setSingleKey(targetId, val, ts);
+        });
+      });
+    } else {
+      [1, 2, 3].forEach(b => {
+        const targetId = `${lineId}s${curShift}b${b}_bn`;
+        setSingleKey(targetId, val, ts);
+      });
+    }
+  }
+
+  // Keep backward-compatible QC keys mirrored when Sheet1 M/C, FA, or FFA changes
+  const qcMatch = id.match(/^(l\d)s(\d)b1_(m|fa|ffa)$/);
+  if (qcMatch) {
+    const [, lid, s, qType] = qcMatch;
+    const mapKey = qType === 'm' ? `moi${s}${lid}` : (qType === 'fa' ? `faq${s}${lid}` : `ffa${s}${lid}`);
+    setSingleKey(mapKey, val, ts);
+  }
+
+  if (!opts.deferRender) {
+    refreshAllViews();
+    saveLocalState();
+    scheduleCloudPush();
+  }
+}
+
+/* Recalculate TFM and Row Average on a single 8-hour Data Table row */
+function recalcTableRow(tr, L, s) {
+  const c = Array.from(tr.cells);
+  if (c.length < 12) return;
+  const g = i => parseFloat(c[i].textContent);
+  const tCell = c[9];
+  if (!isNaN(g(7)) && !isNaN(g(8))) {
+    const sum5 = [4, 5, 6, 7, 8].reduce((acc, idx) => acc + (g(idx) || 0), 0);
+    const tfmVal = (100 - sum5 - 2) / 1.086;
+    tCell.dataset.v = tfmVal.toFixed(3);
+    tCell.textContent = tfmVal.toFixed(2);
+  } else {
+    tCell.dataset.v = '';
+    tCell.textContent = '';
+  }
+
+  const wCells = Array.from(tr.querySelectorAll('td.w'));
+  const nums = wCells.map(td => parseFloat(td.textContent)).filter(x => !isNaN(x));
+  const avgCell = tr.querySelector('td.a');
+  if (!avgCell) return;
+  if (!nums.length) {
+    avgCell.dataset.v = '';
+    avgCell.textContent = '';
+    avgCell.classList.remove('bad');
+  } else {
+    const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+    avgCell.dataset.v = mean.toFixed(3);
+    avgCell.textContent = mean.toFixed(2);
+    avgCell.classList.toggle('bad', isOutOfSpec(L, s, mean));
+  }
+}
+
+/* Render or update the 8-hour Data Table for Line L, Shift s, Batch b (rows a..z-1)
+   directly from Sheet1 values! */
+function renderBatchRows(L, s, b) {
+  const tb = gi(`${L.id}_b${s}`);
+  if (!tb) return;
+  const H = hrs(SHIFTS[s - 1][2]);
+  const [a, z] = BL[b - 1];
+  const p = pid(L, s, b);
+  const v = getNum('var' + s, 0.2);
+  const testsStr = getVal('tests' + s) || TD[s];
+  const tests = new Set(testsStr.split(/[,\s]+/).filter(Boolean).map(x => x.padStart(5, '0')));
+  const dateStr = dtf(getVal('date' + s) || (s === 3 ? yestDMY() : todayDMY()));
+  const pnVal = getVal(p + '_p') || L.p;
+  const bnVal = getVal(p + '_bn') || getVal(pid(L, s, 1) + '_bn') || getVal(pid(L, 1, 1) + '_bn') || L.b;
+  const rawM = getVal(p + '_m').trim();
+  const baseM = parseFloat(rawM);
+  const ffaVal = getVal(p + '_ffa').trim();
+  // FA comes strictly from Sheet1 (`p + '_fa'`)
+  const faVal = getVal(p + '_fa').trim();
+  const baseTmp = getNum(`tmp${s}${L.id}`, L.t);
+  const vTmp = getNum(`tmpv${s}${L.id}`, 0.5);
+  const baseCl = getNum(`chl${s}${L.id}`, L.cl[0]);
+  const vCl = getNum(`chlv${s}${L.id}`, L.cl[1]);
+  const baseGly = getNum(`gly${s}${L.id}`, L.gl[0]);
+  const vGly = getNum(`glyv${s}${L.id}`, L.gl[1]);
+  const seed = getBatchSeed(L, s, b);
+
+  while (tb.rows.length < 8) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="d"></td><td class="hr"></td><td class="pn"></td><td class="b"></td>` +
+      `<td contenteditable inputmode="decimal" class="qcell" data-q="m"></td>` +
+      `<td contenteditable inputmode="decimal" class="qcell" data-q="ffa"></td>` +
+      `<td contenteditable inputmode="decimal" class="qcell fa-cell" data-q="fa" title="Sourced from Sheet1"></td>` +
+      `<td contenteditable inputmode="decimal" class="cl-cell"></td>` +
+      `<td contenteditable inputmode="decimal" class="gly-cell"></td>` +
+      `<td class="t"></td>` +
+      `<td contenteditable inputmode="decimal" class="tmp-cell"></td>` +
+      [...Array(L.n)].map((_, k) => `<td contenteditable inputmode="decimal" class="w wcell" data-k="${k}"></td>`).join('') +
+      `<td class="a"></td>`;
+    tb.appendChild(tr);
+  }
+
+  for (let r = a; r < z; r++) {
+    const row = tb.rows[r];
+    if (!row) continue;
+    const isFirstHr = (r === a);
+    const hrStr = H[r];
+    const isTestHr = tests.has(hrStr);
+
+    row.cells[0].textContent = dateStr;
+    row.cells[1].textContent = hrStr;
+    row.cells[2].textContent = pnVal;
+    row.cells[3].textContent = bnVal;
+
+    // M/C (Col 4)
+    const cM = row.cells[4];
+    cM.dataset.set = p + '_m';
+    if (document.activeElement !== cM) {
+      if (rawM === '' || isNaN(baseM)) cM.textContent = '';
+      else cM.textContent = isFirstHr ? baseM.toFixed(2) : seededRnd(baseM, v, 2, `${seed}_${p}_m_${r}`).toFixed(2);
+    }
+
+    // FFA (Col 5) - sourced from Sheet1
+    const cFfa = row.cells[5];
+    cFfa.dataset.set = p + '_ffa';
+    if (document.activeElement !== cFfa) {
+      cFfa.textContent = ffaVal;
+    }
+
+    // FA (Col 6) - sourced directly from Sheet1 (`p + '_fa'`)
+    const cFa = row.cells[6];
+    cFa.dataset.set = p + '_fa';
+    if (document.activeElement !== cFa) {
+      cFa.textContent = faVal;
+    }
+
+    // Cl (Col 7) & Gly (Col 8) at test hours
+    const cCl = row.cells[7];
+    const cGly = row.cells[8];
+    if (document.activeElement !== cCl) {
+      cCl.textContent = isTestHr ? seededRnd(baseCl, vCl, 2, `${seed}_${p}_cl_${r}`).toFixed(2) : '';
+    }
+    if (document.activeElement !== cGly) {
+      cGly.textContent = isTestHr ? seededRnd(baseGly, vGly, 2, `${seed}_${p}_gly_${r}`).toFixed(2) : '';
+    }
+
+    // Temp (Col 10)
+    const cTmp = row.cells[10];
+    if (document.activeElement !== cTmp) {
+      cTmp.textContent = seededRnd(baseTmp, vTmp, 1, `${seed}_${p}_tmp_${r}`).toFixed(1);
+    }
+
+    // Weights (Cols 11 .. 11 + L.n - 1)
+    for (let k = 0; k < L.n; k++) {
+      const wCell = row.cells[11 + k];
+      if (!wCell) continue;
+      wCell.dataset.w = `${p}_c${k}`;
+      if (document.activeElement !== wCell) {
+        const wRaw = getVal(`${p}_c${k}`).trim();
+        const bw = parseFloat(wRaw);
+        if (wRaw === '' || isNaN(bw)) {
+          wCell.textContent = '';
+        } else if (isFirstHr) {
+          wCell.textContent = fixW(bw.toFixed(2));
+        } else {
+          wCell.textContent = fixW(seededRnd(bw, v, 2, `${seed}_${p}_c${k}_${r}`).toFixed(2));
+        }
+      }
+    }
+
+    recalcTableRow(row, L, s);
+  }
+
+  // Update Sheet1 Batch Mean & Spec Range
+  const validWs = [...Array(L.n)]
+    .map((_, k) => parseFloat(getVal(`${p}_c${k}`)))
+    .filter(x => !isNaN(x));
+  const meanEl = gi(`${p}_mean`);
+  if (meanEl) {
+    if (validWs.length) {
+      const mVal = validWs.reduce((acc, c) => acc + c, 0) / validWs.length;
+      meanEl.textContent = mVal.toFixed(2);
+      meanEl.classList.toggle('bad', isOutOfSpec(L, s, mVal));
+    } else {
+      meanEl.textContent = '';
+      meanEl.classList.remove('bad');
+    }
+  }
+}
+
+/* Synchronize Entry View inputs & averages with STATE */
+function refreshEntryView() {
+  const s = +(gi('e_sh') ? gi('e_sh').value : 1);
+  const b = +(gi('e_bt') ? gi('e_bt').value : 1);
+  const eDate = gi('e_date');
+  if (eDate && document.activeElement !== eDate) {
+    eDate.value = getVal('date' + s) || (s === 3 ? yestDMY() : todayDMY());
+  }
+
+  const allMissing = [];
+  LINES.forEach(L => {
+    const p = pid(L, s, b);
+    const pInp = $(`#ent .e-p[data-l="${L.id}"]`);
+    if (pInp && document.activeElement !== pInp) pInp.value = getVal(p + '_p') || L.p;
+
+    const bnInp = $(`#ent .e-bn[data-l="${L.id}"]`);
+    if (bnInp && document.activeElement !== bnInp) {
+      bnInp.value = getVal(p + '_bn') || getVal(pid(L, s, 1) + '_bn') || getVal(pid(L, 1, 1) + '_bn') || L.b;
+    }
+
+    const mInp = $(`#ent .e-moi[data-l="${L.id}"]`);
+    if (mInp && document.activeElement !== mInp) mInp.value = getVal(p + '_m');
+
+    const faInp = $(`#ent .e-fa[data-l="${L.id}"]`);
+    if (faInp && document.activeElement !== faInp) faInp.value = getVal(p + '_fa');
+
+    const ffaInp = $(`#ent .e-ffa[data-l="${L.id}"]`);
+    if (ffaInp && document.activeElement !== ffaInp) ffaInp.value = getVal(p + '_ffa');
+
+    const wInputs = $$(`#ent .e-w[data-l="${L.id}"]`);
+    const nums = [];
+    const miss = [];
+    wInputs.forEach((wEl, idx) => {
+      const wid = `${p}_c${idx}`;
+      const val = getVal(wid).trim();
+      if (document.activeElement !== wEl) {
+        wEl.value = val;
+      }
+      const curVal = wEl.value.trim();
+      if (curVal === '') {
+        miss.push(idx + 1);
+        wEl.classList.add('bad');
+      } else {
+        wEl.classList.remove('bad');
+        const n = parseFloat(curVal);
+        if (!isNaN(n)) nums.push(n);
+      }
+    });
+
+    const avgInp = $(`#ent .e-avg[data-l="${L.id}"]`);
+    if (avgInp) {
+      if (nums.length) {
+        const mean = nums.reduce((a, c) => a + c, 0) / nums.length;
+        avgInp.value = mean.toFixed(2);
+        avgInp.classList.toggle('bad', isOutOfSpec(L, s, mean));
+      } else {
+        avgInp.value = '';
+        avgInp.classList.remove('bad');
+      }
+    }
+
+    const warnEl = $(`#ent .e-warn[data-l="${L.id}"]`);
+    if (warnEl) {
+      if (miss.length) {
+        warnEl.className = 'msg wn e-warn';
+        warnEl.textContent = `⚠️ Missing ${miss.length} weights (No. ${miss.join(', ')})`;
+        allMissing.push(`${L.title.split(' - ')[0]} missing ${miss.length} weights`);
+      } else {
+        warnEl.className = 'msg e-warn';
+        warnEl.textContent = '';
+      }
+    }
+  });
+
+  const allWarn = gi('e_allwarn');
+  if (allWarn) {
+    if (allMissing.length) {
+      allWarn.className = 'msg wn';
+      allWarn.textContent = '⚠️ ' + allMissing.join(' | ');
+    } else {
+      allWarn.className = 'msg';
+      allWarn.textContent = '';
+    }
+  }
+}
+
+/* Refresh all Sheet1 inputs, Spec labels, 8-Hour Tables, and Entry View */
+function refreshAllViews() {
+  if (STATE.updatingDOM) return;
+  STATE.updatingDOM = true;
+  try {
+    $$('input[id]').forEach(inp => {
+      if (inp.type === 'checkbox' || inp.type === 'file') return;
+      if (STATE.v[inp.id] !== undefined && document.activeElement !== inp && inp.value !== STATE.v[inp.id]) {
+        inp.value = STATE.v[inp.id];
+      }
+    });
+
+    $$('td.avs').forEach(cell => {
+      const s = cell.dataset.s, l = cell.dataset.l;
+      const lo = getVal(`amin${s}${l}`), hi = getVal(`amax${s}${l}`);
+      cell.textContent = (lo !== '' && hi !== '') ? `${lo}-${hi}` : '';
+    });
+
+    LINES.forEach(L => {
+      SHIFTS.forEach(([s]) => {
+        [1, 2, 3].forEach(b => renderBatchRows(L, s, b));
+      });
+    });
+
+    refreshEntryView();
+  } finally {
+    STATE.updatingDOM = false;
+  }
+}
+
+/* Initialize Default Values in STATE (with timestamp = 0 so real edits always win!) */
+function initDefaultState() {
+  $$('input[id]').forEach(inp => {
+    if (inp.type === 'checkbox' || inp.type === 'file') return;
+    if (STATE.v[inp.id] === undefined) {
+      STATE.v[inp.id] = inp.value;
+      STATE.ft[inp.id] = 0;
+    }
+  });
+}
+
+/* LocalStorage Persistence (separated for Line 1/2 shared vs Line 3 variant) */
+const isL3Key = id => /^l3|l3$|^seed_l3/.test(id);
+
+function saveLocalState() {
+  const sharedV = {}, sharedFt = {}, l3V = {}, l3Ft = {};
+  Object.keys(STATE.v).forEach(k => {
+    if (isL3Key(k)) {
+      l3V[k] = STATE.v[k];
+      l3Ft[k] = STATE.ft[k] || 0;
+    } else {
+      sharedV[k] = STATE.v[k];
+      sharedFt[k] = STATE.ft[k] || 0;
+    }
+  });
+  const ok1 = sWrite('shared_state', JSON.stringify({ v: sharedV, ft: sharedFt, maxTs: STATE.maxTs }));
+  const ok2 = sWrite('l3_state_' + L3k, JSON.stringify({ v: l3V, ft: l3Ft, maxTs: STATE.maxTs }));
+  stamp(ok1 && ok2 ? 'Saved locally ' + new Date().toLocaleTimeString('en-US', { hour12: false }) : 'Local save unavailable');
+}
+
+function loadLocalState() {
+  initDefaultState();
+  try {
+    const sh = JSON.parse(sRead('shared_state', 'null'));
+    const l3 = JSON.parse(sRead('l3_state_' + L3k, 'null'));
+    [sh, l3].forEach(pack => {
+      if (!pack) return;
+      if (pack.maxTs && pack.maxTs > STATE.maxTs) STATE.maxTs = pack.maxTs;
+      Object.entries(pack.v || {}).forEach(([k, val]) => {
+        const ts = (pack.ft && pack.ft[k]) || 0;
+        if (ts > 0 || STATE.v[k] === undefined) {
+          STATE.v[k] = String(val);
+          STATE.ft[k] = ts;
+          if (ts > STATE.maxTs) STATE.maxTs = ts;
+        }
+      });
+    });
+    ['1', '2', '3'].forEach(s => {
+      const dk = 'date' + s;
+      if (!STATE.ft[dk]) {
+        STATE.v[dk] = (+s === 3 ? yestDMY() : todayDMY());
+      }
+    });
+  } catch (e) {}
+  refreshAllViews();
+}
+
+/* Regenerate Random Weights & Moisture for a Batch or Shift */
+function regenerateBatch(L, s, b) {
+  const ts = nextEditTimestamp();
+  const p = pid(L, s, b);
+  const v = getNum('var' + s, 0.2);
+  const newSeed = String(ts);
+  setSingleKey('seed_' + p, newSeed, ts);
+
+  for (let k = 0; k < L.n; k++) {
+    const nw = fixW(seededRnd(L.c[k], v, 2, `${newSeed}_init_${p}_c${k}`).toFixed(2));
+    setSingleKey(`${p}_c${k}`, nw, ts);
+  }
+  const nm = seededRnd(L.m, v, 2, `${newSeed}_init_${p}_m`).toFixed(2);
+  setSingleKey(`${p}_m`, nm, ts);
+  if (!getVal(`${p}_fa`).trim()) {
+    setSingleKey(`${p}_fa`, L.fa.toFixed(2), ts);
+  }
+}
+
+/* ============================================================================
+   5. CONFLICT-FREE PER-FIELD FIREBASE CLOUD SYNC ENGINE (AES-GCM 256)
+   ============================================================================ */
+const SYNC = {
+  code: sRead('sync_code', '') || DEFAULT_CLOUD_URL,
+  pin: sRead('sync_pin', null) === null ? DEFAULT_PIN : sRead('sync_pin', DEFAULT_PIN),
+  salt: sRead('sync_salt', ''),
+  last: 0,
+  state: 'ok',
+  busy: false,
+  pendingPush: false
+};
+
+function syncVar() { return L3k === 'lemon' ? 'L' : 'R'; }
+function syncOwnBuckets() {
+  const v = syncVar();
+  return ['S1', 'S2', 'S3', 'G', 'S1' + v, 'S2' + v, 'S3' + v, 'G' + v];
+}
+function syncBucketOf(id) {
+  const v = isL3Key(id) ? syncVar() : '';
+  let m = id.match(/s(\d)b\d/);
+  if (m) return 'S' + m[1] + v;
+  m = id.match(/^(?:date|var|tests)(\d)/);
+  if (m) return 'S' + m[1] + v;
+  m = id.match(/^[a-z]+(\d)l\d/);
+  if (m) return 'S' + m[1] + v;
+  return 'G' + v;
+}
+
+function syncPersistMeta() {
+  sWrite('sync_code', SYNC.code);
+  sWrite('sync_pin', SYNC.pin);
+  sWrite('sync_salt', SYNC.salt);
+}
+
+function setSyncStatus(state, msg) {
+  SYNC.state = state;
+  const el = gi('syncSt');
+  if (!el) return;
+  el.className = state;
+  if (state === 'ok') {
+    const t = SYNC.last ? new Date(SYNC.last) : new Date();
+    const hm = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
+    el.textContent = `🟢 Synced ${hm}`;
+  } else if (state === 'busy') {
+    el.textContent = msg || '🟡 Syncing...';
+  } else {
+    el.textContent = msg || '🔴 Sync Error';
+  }
+  el.title = msg || '';
+}
+
+function b64(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s);
+}
+function unb64(str) {
+  const b = atob(str), a = new Uint8Array(b.length);
+  for (let i = 0; i < b.length; i++) a[i] = b.charCodeAt(i);
+  return a;
+}
+
+async function deriveAesKey(saltB64) {
+  const km = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(SYNC.pin || DEFAULT_PIN),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: unb64(saltB64), iterations: 120000, hash: 'SHA-256' },
+    km,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function readCloudDoc() {
+  const url = (SYNC.code || DEFAULT_CLOUD_URL).trim();
+  const res = await fetch(url, { cache: 'no-store' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const body = await res.json();
+  if (!body) return null;
+  if (body.enc === 'aesgcm') {
+    SYNC.salt = body.salt || SYNC.salt;
+    const key = await deriveAesKey(body.salt);
+    const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(body.iv) }, key, unb64(body.ct));
+    return JSON.parse(new TextDecoder().decode(pt));
+  }
+  return body.sv === 2 ? body : null;
+}
+
+/* Build Local Buckets with Per-Field Timestamps (`v` and `t`) */
+function buildLocalBuckets() {
+  const own = syncOwnBuckets();
+  const b = {};
+  own.forEach(k => { b[k] = { v: {}, t: {} }; });
+  Object.keys(STATE.v).forEach(id => {
+    const bk = syncBucketOf(id);
+    if (!b[bk]) b[bk] = { v: {}, t: {} };
+    const ts = STATE.ft[id] || 0;
+    if (ts > 0 || STATE.v[id] !== '') {
+      b[bk].v[id] = STATE.v[id];
+      b[bk].t[id] = ts;
+    }
+  });
+  return b;
+}
+
+/* Merge Remote Cloud Document with Local State Field-by-Field! */
+function mergeCloudAndLocal(remoteDoc) {
+  const remTs = (remoteDoc && remoteDoc.ts) ? Object.assign({}, remoteDoc.ts) : {};
+  const remB = (remoteDoc && remoteDoc.b) ? Object.assign({}, remoteDoc.b) : {};
+  const localB = buildLocalBuckets();
+  const own = syncOwnBuckets();
+
+  let localChanged = false;
+  let remoteNeedsUpdate = !remoteDoc;
+
+  Object.values(remTs).forEach(t => { if (t > STATE.maxTs) STATE.maxTs = t; });
+  Object.values(remB).forEach(bkObj => {
+    if (bkObj && bkObj.t) {
+      Object.values(bkObj.t).forEach(t => { if (t > STATE.maxTs) STATE.maxTs = t; });
+    }
+  });
+
+  own.forEach(k => {
+    const rBucket = remB[k] || { v: {}, t: {} };
+    const rV = rBucket.v || {};
+    const rT = rBucket.t || {};
+    const lBucket = localB[k] || { v: {}, t: {} };
+    const lV = lBucket.v || {};
+    const lT = lBucket.t || {};
+
+    const mergedV = {};
+    const mergedT = {};
+    let bucketMaxTs = remTs[k] || 0;
+
+    const allKeys = new Set([...Object.keys(rV), ...Object.keys(lV)]);
+    allKeys.forEach(id => {
+      const hasR = Object.prototype.hasOwnProperty.call(rV, id);
+      const hasL = Object.prototype.hasOwnProperty.call(lV, id);
+      const rFieldTs = hasR ? (rT[id] !== undefined ? Number(rT[id]) : 1) : -1;
+      const lFieldTs = hasL ? Number(lT[id] || 0) : -1;
+
+      if (rFieldTs > lFieldTs) {
+        mergedV[id] = String(rV[id]);
+        mergedT[id] = rFieldTs;
+        if (STATE.v[id] !== String(rV[id]) || (STATE.ft[id] || 0) < rFieldTs) {
+          STATE.v[id] = String(rV[id]);
+          STATE.ft[id] = rFieldTs;
+          localChanged = true;
+        }
+      } else if (lFieldTs > rFieldTs) {
+        mergedV[id] = String(lV[id]);
+        mergedT[id] = lFieldTs;
+        if (!hasR || String(rV[id]) !== String(lV[id]) || rFieldTs < lFieldTs) {
+          remoteNeedsUpdate = true;
+        }
+      } else if (hasR) {
+        mergedV[id] = String(rV[id]);
+        mergedT[id] = rFieldTs;
+      }
+      if (mergedT[id] > bucketMaxTs) bucketMaxTs = mergedT[id];
+    });
+
+    remB[k] = { v: mergedV, t: mergedT };
+    remTs[k] = bucketMaxTs || Date.now();
+  });
+
+  return {
+    mergedPlain: { v: 2, sv: 2, ts: remTs, b: remB },
+    localChanged,
+    remoteNeedsUpdate
+  };
+}
+
+async function writeCloudDoc(plainObj) {
+  const url = (SYNC.code || DEFAULT_CLOUD_URL).trim();
+  if (!SYNC.salt) {
+    SYNC.salt = b64(crypto.getRandomValues(new Uint8Array(16)));
+    syncPersistMeta();
+  }
+  const key = await deriveAesKey(SYNC.salt);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv },
+    key,
+    new TextEncoder().encode(JSON.stringify(plainObj))
+  );
+  const envelope = {
+    v: 2,
+    sv: 2,
+    enc: 'aesgcm',
+    salt: SYNC.salt,
+    iv: b64(iv),
+    ct: b64(new Uint8Array(ct))
+  };
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(envelope)
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+}
+
+/* Unified Two-Way Sync (Pull + Per-Field Merge + Push if needed) */
+async function syncNow(opts = {}) {
+  if (SYNC.busy) {
+    SYNC.pendingPush = true;
+    return;
+  }
+  SYNC.busy = true;
+  setSyncStatus('busy', opts.pushOnly ? '🟡 Pushing...' : '🟡 Syncing...');
+  try {
+    const remoteDoc = await readCloudDoc();
+    const { mergedPlain, localChanged, remoteNeedsUpdate } = mergeCloudAndLocal(remoteDoc);
+
+    if (localChanged) {
+      refreshAllViews();
+      saveLocalState();
+    }
+    if ((remoteNeedsUpdate || opts.forcePush) && !opts.pullOnly) {
+      await writeCloudDoc(mergedPlain);
+    }
+    SYNC.last = Date.now();
+    syncPersistMeta();
+    setSyncStatus('ok');
+    if (opts.toast) {
+      pToast(opts.toastMsg || 'Synced with Cloud ✓', true);
+      beep(true);
+    }
+  } catch (err) {
+    setSyncStatus('err', 'Error: ' + (err && err.message ? err.message : err));
+    if (opts.toast) {
+      pToast('Sync failed: ' + (err && err.message ? err.message : err), false);
+      beep(false);
+    }
+  } finally {
+    SYNC.busy = false;
+    if (SYNC.pendingPush) {
+      SYNC.pendingPush = false;
+      scheduleCloudPush(400);
+    }
+  }
+}
+
+let pushTimer = null;
+function scheduleCloudPush(delay = 900) {
+  if (gi('auto') && !gi('auto').checked) return;
+  clearTimeout(pushTimer);
+  setSyncStatus('busy', '🟡 Pending sync...');
+  pushTimer = setTimeout(() => {
+    syncNow();
+  }, delay);
+}
+
+/* ============================================================================
+   6. EVENT LISTENERS: ENTRY, SHEET1, 8-HR TABLE, EXCEL PASTE & NAVIGATION
+   ============================================================================ */
+function bindAllEvents() {
+  document.addEventListener('input', ev => {
+    const t = ev.target;
+    if (!t) return;
+    if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') {
+      const en = toEnDigits(t.value);
+      if (en !== t.value) t.value = en;
+    } else if (t.isContentEditable) {
+      const en = toEnDigits(t.textContent);
+      if (en !== t.textContent) t.textContent = en;
+    }
+  }, true);
+  document.addEventListener('click', ev => {
+    const tab = ev.target.closest('a.tab[data-pg]');
+    if (tab) {
+      ev.preventDefault();
+      const pgId = tab.dataset.pg;
+      $$('section.pg').forEach(s => s.classList.toggle('on', s.id === pgId));
+      $$('nav a.tab').forEach(a => a.classList.toggle('on', a.dataset.pg === pgId));
+      sWrite('activePg', pgId);
+      refreshAllViews();
+      window.scrollTo(0, 0);
+      return;
+    }
+  });
+
+  gi('e_sh').addEventListener('change', () => refreshEntryView());
+  gi('e_bt').addEventListener('change', () => refreshEntryView());
+  gi('e_date').addEventListener('input', ev => {
+    const s = +gi('e_sh').value;
+    updateField('date' + s, ev.target.value);
+  });
+
+  const switchLine3Variant = newVar => {
+    if (newVar !== 'royal' && newVar !== 'lemon') return;
+    saveLocalState();
+    L3k = newVar;
+    sWrite('L3Variant', L3k);
+    gi('l3sel').value = L3k;
+    gi('e_vr').value = L3k;
+    buildAllDOM();
+    loadLocalState();
+    bindEntryInputs();
+    syncNow();
+  };
+  gi('l3sel').addEventListener('change', ev => switchLine3Variant(ev.target.value));
+  gi('e_vr').addEventListener('change', ev => switchLine3Variant(ev.target.value));
+
+  bindEntryInputs();
+
+  document.addEventListener('input', ev => {
+    const t = ev.target;
+    if (!t || t.closest('#ent') || t.closest('#syncModal')) return;
+    if (t.tagName === 'INPUT' && t.id && t.type !== 'checkbox' && t.type !== 'file') {
+      updateField(t.id, t.value);
+    }
+  });
+
+  document.addEventListener('change', ev => {
+    const t = ev.target;
+    if (!t) return;
+    if (t.classList && t.classList.contains('isz')) {
+      const v = t.value;
+      $$('.isz').forEach(s => { s.value = v; });
+      document.documentElement.style.setProperty('--z', v / 100);
+      sWrite('imgZoom', v);
+      return;
+    }
+    if (t.tagName === 'INPUT' && t.id && /^(l\d)s(\d)b(\d)_c\d+$/.test(t.id)) {
+      updateField(t.id, t.value, { fixWeight: true });
+    }
+  });
+
+  document.addEventListener('focusout', ev => {
+    const t = ev.target;
+    if (!t || !t.matches) return;
+    if (t.matches('td.qcell[contenteditable]')) {
+      const targetId = t.dataset.set;
+      if (targetId) {
+        updateField(targetId, t.textContent.trim());
+      }
+      return;
+    }
+    if (t.matches('td.w[contenteditable]')) {
+      const targetId = t.dataset.w;
+      const fixed = fixW(t.textContent.trim());
+      if (fixed !== t.textContent.trim()) t.textContent = fixed;
+      if (targetId) {
+        updateField(targetId, fixed, { fixWeight: true });
+      }
+      return;
+    }
+    if (t.matches('td[contenteditable]')) {
+      const tr = t.closest('tr');
+      const tb = tr && tr.closest('tbody');
+      if (tr && tb) {
+        const m = tb.id.match(/^(l\d)_b(\d)$/);
+        if (m) {
+          const L = LINES.find(x => x.id === m[1]);
+          if (L) recalcTableRow(tr, L, +m[2]);
+        }
+      }
+    }
+  });
+
+  document.addEventListener('keydown', ev => {
+    const el = ev.target;
+    if (!el || !el.matches || !el.matches('td[contenteditable], .pt input')) return;
+    const map = {
+      ArrowRight: [0, 1],
+      ArrowLeft: [0, -1],
+      ArrowDown: [1, 0],
+      ArrowUp: [-1, 0],
+      Enter: [ev.shiftKey ? -1 : 1, 0],
+      Tab: [0, ev.shiftKey ? -1 : 1]
+    }[ev.key];
+    if (map) {
+      ev.preventDefault();
+      moveTableFocus(el, map[0], map[1]);
+    }
+  });
+
+  document.addEventListener('paste', handleExcelPaste);
+  document.addEventListener('click', handleButtonClicks);
+}
+
+function bindEntryInputs() {
+  const getSB = () => ({ s: +gi('e_sh').value, b: +gi('e_bt').value });
+
+  $$('#ent .e-p, #ent .e-bn, #ent .e-moi, #ent .e-fa, #ent .e-ffa, #ent .e-w').forEach(inp => {
+    inp.addEventListener('focus', () => {
+      try { if (inp.value) inp.select(); } catch (e) {}
+    });
+
+    inp.addEventListener('input', () => {
+      const { s, b } = getSB();
+      const lid = inp.dataset.l;
+      const L = LINES.find(x => x.id === lid);
+      if (!L) return;
+      const p = pid(L, s, b);
+
+      if (inp.classList.contains('e-p')) updateField(p + '_p', inp.value);
+      else if (inp.classList.contains('e-bn')) updateField(p + '_bn', inp.value);
+      else if (inp.classList.contains('e-moi')) updateField(p + '_m', inp.value);
+      else if (inp.classList.contains('e-fa')) updateField(p + '_fa', inp.value);
+      else if (inp.classList.contains('e-ffa')) updateField(p + '_ffa', inp.value);
+      else if (inp.classList.contains('e-w')) {
+        const idx = +inp.dataset.i;
+        updateField(`${p}_c${idx}`, inp.value);
+      }
+    });
+
+    if (inp.classList.contains('e-w')) {
+      inp.addEventListener('blur', () => {
+        const { s, b } = getSB();
+        const lid = inp.dataset.l;
+        const L = LINES.find(x => x.id === lid);
+        if (!L) return;
+        const p = pid(L, s, b);
+        const idx = +inp.dataset.i;
+        const raw = inp.value.trim();
+        if (raw && /^-?\d+(\.\d+)?$/.test(raw)) {
+          const fx = fixW(raw);
+          if (fx !== raw) {
+            inp.value = fx;
+            inp.classList.add('fixed');
+            updateField(`${p}_c${idx}`, fx, { fixWeight: true });
+          }
+        }
+      });
+
+      inp.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          const allW = $$('#ent .e-w');
+          const curIdx = allW.indexOf(inp);
+          if (curIdx >= 0 && curIdx < allW.length - 1) {
+            allW[curIdx + 1].focus();
+            try { allW[curIdx + 1].select(); } catch (e) {}
+          }
+        }
+      });
+    }
+  });
+}
+
+function moveTableFocus(el, dr, dc) {
+  const tr = el.closest('tr');
+  if (!tr) return;
+  const isPt = !!tr.closest('.pt');
+  const rows = isPt
+    ? Array.from(tr.closest('table').rows).filter(r => r.querySelectorAll('td[contenteditable], input').length)
+    : Array.from(tr.closest('section').querySelectorAll('.wrap tbody tr'));
+  const ri = rows.indexOf(tr);
+  const rowCells = r => Array.from(r.querySelectorAll('td[contenteditable], input'));
+  const cur = rowCells(tr);
+  let nr = ri + dr, nc = cur.indexOf(el) + dc;
+  if (dc) {
+    if (nc < 0) { nr = ri - 1; nc = 999; }
+    else if (nc >= cur.length) { nr = ri + 1; nc = 0; }
+  }
+  const targetRow = rows[nr];
+  if (!targetRow) return;
+  const list = rowCells(targetRow);
+  if (list.length) {
+    const target = list[Math.min(Math.max(nc, 0), list.length - 1)];
+    target.focus();
+    if (target.select) target.select();
+  }
+}
+
+function handleExcelPaste(ev) {
+  const el = ev.target;
+  if (!el || !el.matches || !el.matches('td[contenteditable], .pt input')) return;
+  const raw = (ev.clipboardData || window.clipboardData).getData('text').replace(/\r/g, '').replace(/\n+$/, '');
+  if (!raw) return;
+  ev.preventDefault();
+  const norm = v => v.trim().replace(/^"(.*)"$/, '$1').replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 1632).replace(/[\u066B,]/g, '.');
+  const grid = raw.split('\n').map(r => r.split('\t').map(norm));
+
+  const tr = el.closest('tr');
+  const isPt = !!tr.closest('.pt');
+  const rows = isPt
+    ? Array.from(tr.closest('table').rows).filter(r => r.querySelectorAll('td[contenteditable], input').length)
+    : Array.from(tr.closest('section').querySelectorAll('.wrap tbody tr'));
+  const ri = rows.indexOf(tr);
+  const rowCells = r => Array.from(r.querySelectorAll('td[contenteditable], input'));
+  const ci = rowCells(tr).indexOf(el);
+
+  grid.forEach((line, rOffset) => {
+    const targetRow = rows[ri + rOffset];
+    if (!targetRow) return;
+    const cells = rowCells(targetRow);
+    line.forEach((val, cOffset) => {
+      const target = cells[ci + cOffset];
+      if (!target || val === '') return;
+      if (target.tagName === 'INPUT') {
+        updateField(target.id, val, { fixWeight: /_c\d+$/.test(target.id), deferRender: true });
+      } else if (target.dataset.w) {
+        updateField(target.dataset.w, val, { fixWeight: true, deferRender: true });
+      } else if (target.dataset.set) {
+        updateField(target.dataset.set, val, { deferRender: true });
+      }
+    });
+  });
+  refreshAllViews();
+  saveLocalState();
+  scheduleCloudPush();
+}
+
+/* ============================================================================
+   7. BUTTON ACTIONS, DIAGNOSTICS, PNG SHARE/EXPORT & GENUINE .XLSX EXPORT
+   ============================================================================ */
+function handleButtonClicks(ev) {
+  const b = ev.target.closest('button');
+  if (!b) return;
+
+  if (b.id === 'pullBtn') {
+    syncNow({ pullOnly: true, toast: true, toastMsg: 'Pulled latest data from Cloud ✓' });
+    return;
+  }
+
+  if (b.id === 'pushBtn' || b.id === 'e_save' || b.dataset.sv) {
+    saveLocalState();
+    syncNow({ toast: true, toastMsg: 'Saved & synced with Cloud ✓' });
+    const em = gi('e_msg');
+    if (em && b.id === 'e_save') {
+      em.className = 'msg ok';
+      em.textContent = '✓ Saved to Sheet1, 8-hour tables & synced with Cloud';
+    }
+    return;
+  }
+
+  if (b.id === 'syncBtn') {
+    gi('syncCodeInp').value = SYNC.code || DEFAULT_CLOUD_URL;
+    gi('syncPinInp').value = SYNC.pin || DEFAULT_PIN;
+    gi('syncModal').removeAttribute('hidden');
+    return;
+  }
+
+  if (b.id === 'syncClose') {
+    gi('syncModal').setAttribute('hidden', '');
+    return;
+  }
+
+  if (b.id === 'syncSaveBtn') {
+    SYNC.code = gi('syncCodeInp').value.trim() || DEFAULT_CLOUD_URL;
+    SYNC.pin = gi('syncPinInp').value.trim() || DEFAULT_PIN;
+    syncPersistMeta();
+    gi('syncModal').setAttribute('hidden', '');
+    syncNow({ toast: true, toastMsg: 'Cloud settings saved & synced ✓' });
+    return;
+  }
+
+  if (b.id === 'syncForcePushBtn') {
+    SYNC.code = gi('syncCodeInp').value.trim() || DEFAULT_CLOUD_URL;
+    SYNC.pin = gi('syncPinInp').value.trim() || DEFAULT_PIN;
+    syncPersistMeta();
+    gi('syncModal').setAttribute('hidden', '');
+    syncNow({ forcePush: true, toast: true, toastMsg: 'Forced push of all local data to Cloud ✓' });
+    return;
+  }
+
+  if (b.id === 'syncCopyUrlBtn') {
+    const u = gi('syncCodeInp').value.trim() || DEFAULT_CLOUD_URL;
+    copyTextToClipboard(u, b);
+    return;
+  }
+
+  if (b.id === 'e_clear') {
+    const s = +gi('e_sh').value, bt = +gi('e_bt').value;
+    askConfirm(
+      'Clear Batch Weights & QC',
+      `Clear weights, moisture, and FA for Shift ${SN[s]} Batch #${bt} while keeping Batch No. intact?`,
+      () => {
+        const ts = nextEditTimestamp();
+        LINES.forEach(L => {
+          const p = pid(L, s, bt);
+          for (let i = 0; i < L.n; i++) setSingleKey(`${p}_c${i}`, '', ts);
+          setSingleKey(`${p}_m`, L.m.toFixed(2), ts);
+          setSingleKey(`${p}_fa`, L.fa.toFixed(2), ts);
+          setSingleKey(`${p}_ffa`, '', ts);
+        });
+        refreshAllViews();
+        saveLocalState();
+        syncNow({ toast: true, toastMsg: `Cleared Shift ${SN[s]} Batch #${bt} (Batch No. kept) ✓` });
+      }
+    );
+    return;
+  }
+
+  if (b.id === 'e_regen_batch') {
+    const s = +gi('e_sh').value, bt = +gi('e_bt').value;
+    LINES.forEach(L => regenerateBatch(L, s, bt));
+    refreshAllViews();
+    saveLocalState();
+    syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} Batch #${bt} ✓` });
+    return;
+  }
+
+  if (b.dataset.gb) {
+    const [s, bt] = b.dataset.gb.split('_').map(Number);
+    LINES.forEach(L => regenerateBatch(L, s, bt));
+    refreshAllViews();
+    saveLocalState();
+    syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} Batch #${bt} ✓` });
+    return;
+  }
+
+  if (b.dataset.gs) {
+    const s = +b.dataset.gs;
+    askConfirm(
+      `Regenerate Shift ${SN[s]}`,
+      `Generate new random weights and moisture for all batches (1, 2, 3) in Shift ${SN[s]}?`,
+      () => {
+        LINES.forEach(L => [1, 2, 3].forEach(bt => regenerateBatch(L, s, bt)));
+        refreshAllViews();
+        saveLocalState();
+        syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} & synced ✓` });
+      }
+    );
+    return;
+  }
+
+  if (b.id === 'all') {
+    askConfirm(
+      'Regenerate All Shifts (A, B, C)',
+      'Generate new random weights and moisture for all shifts and lines and sync with Cloud?',
+      () => {
+        LINES.forEach(L => SHIFTS.forEach(([s]) => [1, 2, 3].forEach(bt => regenerateBatch(L, s, bt))));
+        refreshAllViews();
+        saveLocalState();
+        syncNow({ toast: true, toastMsg: 'Regenerated all shifts & synced ✓' });
+      }
+    );
+    return;
+  }
+
+  if (b.id === 'ex') {
+    const blob = new Blob([JSON.stringify({ v: STATE.v, ft: STATE.ft, maxTs: STATE.maxTs }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `soap_pro_v2_backup_${_iso()}.json`;
+    a.click();
+    return;
+  }
+
+  if (b.id === 'diagBtn') {
+    runDiagnostics();
+    return;
+  }
+
+  if (b.id === 'rs') {
+    askConfirm(
+      'Reset Local Cache & Pull from Cloud',
+      'Clear the local browser copy on this device and pull the latest data fresh from Cloud?',
+      async () => {
+        ['shared_state', 'l3_state_royal', 'l3_state_lemon'].forEach(k => {
+          try { localStorage.removeItem(STORAGE_PREFIX + k); } catch (e) {}
+        });
+        STATE.v = {};
+        STATE.ft = {};
+        STATE.maxTs = 0;
+        initDefaultState();
+        await syncNow({ pullOnly: true, toast: true, toastMsg: 'Restored latest data from Cloud ✓' });
+      }
+    );
+    return;
+  }
+
+  // Copy TSV for Excel
+  if (b.dataset.copy) {
+    const L = LINES.find(x => x.id === b.dataset.copy);
+    if (L) copyTextToClipboard(buildTsv(L, +b.dataset.s), b);
+    return;
+  }
+
+  // Export XLSX
+  if (b.dataset.xl) {
+    const L = LINES.find(x => x.id === b.dataset.xl);
+    if (L) exportSingleXlsx(L, +b.dataset.s, b);
+    return;
+  }
+  if (b.dataset.xla) {
+    exportAllThreeXlsx(+b.dataset.xla, b);
+    return;
+  }
+
+  // Share / Save PNG Images of Sheet1
+  let m;
+  if (b.dataset.img && (m = b.dataset.img.match(/^(l\d)s(\d)b(\d)$/))) {
+    shareOrSavePng([{ L: LINES.find(x => x.id === m[1]), s: +m[2], b: +m[3] }], b, false);
+  } else if (b.dataset.imgp && (m = b.dataset.imgp.match(/^(l\d)s(\d)b(\d)$/))) {
+    shareOrSavePng([{ L: LINES.find(x => x.id === m[1]), s: +m[2], b: +m[3] }], b, true);
+  } else if (b.dataset.imgg && (m = b.dataset.imgg.match(/^s(\d)b(\d)$/))) {
+    shareOrSavePng(LINES.map(L => ({ L, s: +m[1], b: +m[2] })), b, false);
+  } else if (b.dataset.imgs && (m = b.dataset.imgs.match(/^s(\d)b(\d)$/))) {
+    shareOrSavePng(LINES.map(L => ({ L, s: +m[1], b: +m[2] })), b, true);
+  }
+}
+
+gi('imp').addEventListener('change', ev => {
+  const f = ev.target.files[0];
+  if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const data = JSON.parse(r.result);
+      const tsNow = nextEditTimestamp();
+      Object.entries(data.v || {}).forEach(([k, val]) => {
+        STATE.v[k] = String(val);
+        STATE.ft[k] = (data.ft && data.ft[k]) || tsNow;
+      });
+      refreshAllViews();
+      saveLocalState();
+      syncNow({ toast: true, toastMsg: 'Backup imported & synced ✓' });
+    } catch (e) {
+      pToast('Invalid backup JSON file', false);
+    }
+  };
+  r.readAsText(f);
+});
+
+async function runDiagnostics() {
+  const box = gi('diagBox');
+  box.style.display = 'block';
+  box.className = 'msg ok';
+  box.textContent = 'Checking Cloud connection and state...';
+  const lines = [];
+  lines.push('=== Soap Bar Daily Log Pro v2.0 Diagnostics ===');
+  lines.push('Cloud URL: ' + (SYNC.code || DEFAULT_CLOUD_URL));
+  lines.push('Sync Status: ' + SYNC.state + ' | Highest Timestamp: ' + STATE.maxTs);
+  lines.push('');
+  SHIFTS.forEach(([s]) => {
+    lines.push(`--- Shift ${SN[s]} (${getVal('date' + s)}) ---`);
+    LINES.forEach(L => {
+      const p1 = pid(L, s, 1);
+      lines.push(`  ${L.title.split(' - ')[0]}: BatchNo=${getVal(p1 + '_bn')} | M/C=${getVal(p1 + '_m')} | FA(Sheet1)=${getVal(p1 + '_fa')} | W1=${getVal(p1 + '_c0')}`);
+    });
+  });
+  try {
+    const rem = await readCloudDoc();
+    lines.push('');
+    if (!rem) {
+      lines.push('Cloud Status: Ready (will initialize node on first save)');
+    } else {
+      lines.push('Cloud Status: Connected & Encrypted (AES-GCM 256) ✓');
+      lines.push('Cloud Buckets: ' + Object.keys(rem.b || {}).join(', '));
+    }
+  } catch (e) {
+    lines.push('Cloud Read Error: ' + e.message);
+  }
+  box.textContent = lines.join('\n');
+}
+
+async function copyTextToClipboard(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (e) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = orig; }, 1400);
+  }
+}
+
+function buildTsv(L, s) {
+  const r0 = parseInt(getVal(L.id + '_r'), 10);
+  const last = String.fromCharCode(76 + L.n);
+  const tb = gi(`${L.id}_b${s}`);
+  return Array.from(tb.rows).map((tr, k) =>
+    Array.from(tr.cells).map((c, j, a) => {
+      if (j === a.length - 1) {
+        return r0 ? `=AVERAGE(M${r0 + k + 8 * (s - 1)}:${last}${r0 + k + 8 * (s - 1)})` : (c.dataset.v || '');
+      }
+      if (j === 9) {
+        return c.dataset.v ? (r0 ? `=((100-SUM(F${r0 + k + 8 * (s - 1)}:J${r0 + k + 8 * (s - 1)})-2)/1.086)` : c.dataset.v) : '';
+      }
+      return c.textContent.trim();
+    }).join('\t')
+  ).join('\n');
+}
+
+/* ============================================================================
+   8. SHEET1 PNG IMAGE GENERATOR & SHARER
+   ============================================================================ */
+function renderSheet1Canvas(items) {
+  const fw = [200, 125, 70, 60, 86], pw = 78, av = 116, rh = 34;
+  const zoomSel = $('.isz');
+  const sc = 2 * ((zoomSel ? +zoomSel.value : 100) || 100) / 100;
+  const wd = it => fw.reduce((a, c) => a + c, 0) + it.L.n * pw + av;
+  const W = Math.max(...items.map(wd));
+  const H = items.length * 3 * rh;
+  const cv = document.createElement('canvas');
+  cv.width = (W + 2) * sc;
+  cv.height = (H + 2) * sc;
+  const g = cv.getContext('2d');
+  g.scale(sc, sc);
+  g.fillStyle = '#fff';
+  g.fillRect(0, 0, W + 2, H + 2);
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+
+  const drawCell = (x, y, w, t, o = {}) => {
+    if (o.fill) {
+      g.fillStyle = o.fill;
+      g.fillRect(x + 0.5, y + 0.5, w, rh);
+    }
+    g.strokeStyle = '#000';
+    g.lineWidth = 1;
+    g.strokeRect(x + 0.5, y + 0.5, w, rh);
+    g.fillStyle = '#000';
+    g.font = (o.b ? 'bold ' : '') + '15px Calibri, "Segoe UI", Arial';
+    g.fillText(String(t == null ? '' : t), x + w / 2 + 0.5, y + rh / 2 + 1);
+  };
+
+  items.forEach((it, idx) => {
+    const L = it.L, p = pid(L, it.s, it.b), n = L.n, y = idx * 3 * rh;
+    let x = 0;
+    ['Product Name', 'Batch No.', 'M/C', 'FFA', 'FAL'].forEach((t, i) => {
+      drawCell(x, y, fw[i], t, { b: 1 });
+      x += fw[i];
+    });
+    drawCell(x, y, n * pw, `NET Weight  ${L.gm} GM`, { b: 1 });
+    x += n * pw;
+    drawCell(x, y, av, 'Avrg', { b: 1 });
+
+    x = 0;
+    ['Line ' + L.id.slice(1), '', '(14-16)', '', '0.05 Max'].forEach((t, i) => {
+      drawCell(x, y + rh, fw[i], t, { fill: L.hc, b: 1 });
+      x += fw[i];
+    });
+    for (let i = 1; i <= n; i++) {
+      drawCell(x, y + rh, pw, i, { fill: L.hc, b: 1 });
+      x += pw;
+    }
+    const lo = getVal(`amin${it.s}${L.id}`), hi = getVal(`amax${it.s}${L.id}`);
+    drawCell(x, y + rh, av, (lo && hi) ? `${lo}-${hi}` : '', { fill: L.hc, b: 1 });
+
+    x = 0;
+    const rawWs = [...Array(n)].map((_, j) => getVal(`${p}_c${j}`).trim());
+    const ws = rawWs.map(w => (w !== '' && !isNaN(+w)) ? (+w).toFixed(2) : '');
+    const validWs = ws.filter(Boolean).map(Number);
+    const mVal = getVal(p + '_m').trim();
+    const rowVals = [
+      getVal(p + '_p'),
+      getVal(p + '_bn'),
+      (mVal !== '' && !isNaN(+mVal)) ? (+mVal).toFixed(2) : '',
+      getVal(p + '_ffa').trim(),
+      getVal(p + '_fa').trim()
+    ];
+    rowVals.forEach((t, i) => {
+      drawCell(x, y + 2 * rh, fw[i], t);
+      x += fw[i];
+    });
+    ws.forEach(t => {
+      drawCell(x, y + 2 * rh, pw, t);
+      x += pw;
+    });
+    const avgStr = validWs.length ? (validWs.reduce((a, c) => a + c, 0) / validWs.length).toFixed(2) : '';
+    drawCell(x, y + 2 * rh, av, avgStr, { b: 1 });
+  });
+  return cv;
+}
+
+async function shareOrSavePng(items, btn, downloadOnly) {
+  const cv = renderSheet1Canvas(items);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  if (!blob) return;
+  const lt = items[0].L.title.split(' - ');
+  const ln = (lt[1] || lt[0]).replace(/[^A-Za-z0-9]/g, '');
+  const sn = SN[items[0].s] || items[0].s;
+  const fileName = (items.length > 1 ? `Sheet1_All3_Shift${sn}_b${items[0].b}` : `${ln}_Shift${sn}_b${items[0].b}`) + '.png';
+
+  if (!downloadOnly && navigator.share && navigator.canShare) {
+    try {
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: fileName });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+  const u = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = u;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 4000);
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = '✓ PNG Saved';
+    setTimeout(() => { btn.textContent = orig; }, 1400);
+  }
+}
+
+/* ============================================================================
+   9. NATIVE .XLSX BUILDER (OOXML ZIP — NO EXTERNAL LIBRARIES NEEDED)
+   ============================================================================ */
+function utf8b(s) {
+  return new TextEncoder().encode(String(s));
+}
+let CRC_T = null;
+function crc32(buf) {
+  if (!CRC_T) {
+    CRC_T = [];
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      CRC_T[n] = c >>> 0;
+    }
+  }
+  let crc = 0xFFFFFFFF;
+  for (let i = 0; i < buf.length; i++) crc = CRC_T[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function zipStore(files) {
+  const now = new Date(), parts = [], cd = [];
+  let off = 0;
+  const tm = ((now.getHours() & 31) << 11) | ((now.getMinutes() & 63) << 5) | ((now.getSeconds() / 2) & 31);
+  const dt = (((now.getFullYear() - 1980) & 127) << 9) | (((now.getMonth() + 1) & 15) << 5) | (now.getDate() & 31);
+  files.forEach(f => {
+    const nb = utf8b(f.name), data = f.data, crc = crc32(data);
+    const lh = new Uint8Array(30 + nb.length), lv = new DataView(lh.buffer);
+    lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(6, 0x0800, true); lv.setUint16(8, 0, true);
+    lv.setUint16(10, tm, true); lv.setUint16(12, dt, true); lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true); lv.setUint16(26, nb.length, true); lv.setUint16(28, 0, true);
+    lh.set(nb, 30);
+    parts.push(lh, data);
+    const ch = new Uint8Array(46 + nb.length), cv = new DataView(ch.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true); cv.setUint16(8, 0x0800, true); cv.setUint16(10, 0, true);
+    cv.setUint16(12, tm, true); cv.setUint16(14, dt, true); cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true); cv.setUint16(28, nb.length, true);
+    cv.setUint32(42, off, true);
+    ch.set(nb, 46);
+    cd.push(ch);
+    off += lh.length + data.length;
+  });
+  let cdSize = 0; cd.forEach(a => { cdSize += a.length; });
+  const eocd = new Uint8Array(22), ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, off, true);
+  const all = parts.concat(cd, [eocd]);
+  let total = 0; all.forEach(a => { total += a.length; });
+  const out = new Uint8Array(total);
+  let p = 0; all.forEach(a => { out.set(a, p); p += a.length; });
+  return out;
+}
+function colName(n) {
+  let s = '';
+  while (n > 0) {
+    const m = (n - 1) % 26;
+    s = String.fromCharCode(65 + m) + s;
+    n = (n - m - 1) / 26;
+  }
+  return s;
+}
+function xesc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function xlsTblHtml(L, s, row0, nMax, withHead) {
+  const rows = Array.from(gi(`${L.id}_b${s}`).rows), n = L.n, lw = String.fromCharCode(76 + n);
+  const B = 'border:1px solid #000;text-align:center;font:10pt Calibri;';
+  const bl = 'background:#9CC3EE;font-weight:bold;';
+  const c = (v, st, x) => `<td style="${B}${st || ''}"${x || ''}>${v}</td>`;
+  const rs = (t, w) => c(t, bl + (w ? `width:${w}px;` : ''), ' rowspan="2"');
+  const F = ['dd/mm/yyyy', 'h:mm', '@', '0', '0.00', '0.00', '0.00', '0.00', '0.00', '0.00', '0.0'];
+  let h = '';
+  if (withHead) {
+    h += '<tr><td></td>' + rs('Date', 80) + rs('Time', 50) + rs('Product Name', 190) + rs('Batch No.', 95) +
+      ['M/C', 'FFA', 'FA', 'Cl', 'Gly', 'TFM', 'Temp'].map(t => c(t, bl)).join('') +
+      c(`NET Weight  ${L.gm} GM`, bl, ` colspan="${nMax}"`) + rs('Avrg weight') + '</tr>' +
+      '<tr><td></td>' + SPEC.map(t => c(t, bl)).join('') + [...Array(nMax)].map((_, i) => c(i < n ? i + 1 : '', bl)).join('') + '</tr>';
+  }
+  rows.forEach((tr, i) => {
+    const r = row0 + i, vals = Array.from(tr.cells).map(x => x.textContent.trim());
+    h += '<tr><td></td>';
+    vals.forEach((v, j) => {
+      const nf = j < 11 ? F[j] : '0.00';
+      const st = `mso-number-format:'${nf}';`;
+      const isAv = j === vals.length - 1;
+      if (isAv) for (let q2 = n; q2 < nMax; q2++) h += c('', st);
+      if (j === 9 && v !== '') h += c(v, st, ` x:fmla="=((100-SUM(F${r}:J${r})-2)/1.086)"`);
+      else if (isAv) h += c(v, st, ` x:fmla="=AVERAGE(M${r}:${lw}${r})"`);
+      else h += c(xesc(v), st);
+    });
+    h += '</tr>';
+  });
+  return h;
+}
+function htmlTableToXlsx(html, sheetName) {
+  const doc = new DOMParser().parseFromString('<table>' + html + '</table>', 'text/html');
+  const tbl = doc.querySelector('table');
+  const trs = Array.from(tbl.querySelectorAll('tr'));
+  const occ = [], cells = [], merges = [], colW = {};
+  for (let i = 0; i < trs.length; i++) {
+    occ[i] = occ[i] || []; cells[i] = cells[i] || [];
+    let ci = 0;
+    Array.from(trs[i].children).forEach(td => {
+      while (occ[i][ci]) ci++;
+      const rs = +(td.getAttribute('rowspan') || 1), cs = +(td.getAttribute('colspan') || 1);
+      const st = {};
+      String(td.getAttribute('style') || '').split(';').forEach(p => {
+        const idx = p.indexOf(':');
+        if (idx > 0) st[p.slice(0, idx).trim().toLowerCase()] = p.slice(idx + 1).trim().replace(/^['"]|['"]$/g, '');
+      });
+      if (st.width && !colW[ci]) colW[ci] = parseFloat(st.width) || 0;
+      cells[i][ci] = { td, rs, cs, st };
+      for (let a = 0; a < rs; a++) {
+        occ[i + a] = occ[i + a] || []; cells[i + a] = cells[i + a] || [];
+        for (let b = 0; b < cs; b++) { occ[i + a][ci + b] = true; if (a || b) cells[i + a][ci + b] = null; }
+      }
+      if (rs > 1 || cs > 1) merges.push({ r1: i + 1, c1: ci + 1, r2: i + rs, c2: ci + cs });
+      ci += cs;
+    });
+  }
+  const fonts = ['<font><sz val="10"/><color rgb="FF000000"/><name val="Calibri"/></font>', '<font><b/><sz val="10"/><color rgb="FF000000"/><name val="Calibri"/></font>'];
+  const fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>', '<fill><patternFill patternType="solid"><fgColor rgb="FF9CC3EE"/><bgColor indexed="64"/></patternFill></fill>'];
+  const borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>', '<border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border>'];
+  const xfs = [], xfMap = {}, numFmts = [], nfMap = {};
+  const getNf = code => {
+    if (!code) return 0;
+    if (nfMap[code] === undefined) {
+      nfMap[code] = 164 + numFmts.length;
+      numFmts.push(`<numFmt numFmtId="${nfMap[code]}" formatCode="${xesc(code)}"/>`);
+    }
+    return nfMap[code];
+  };
+  const getXf = (f, l, b, n) => {
+    const k = `${f}|${l}|${b}|${n}`;
+    if (xfMap[k] === undefined) {
+      xfMap[k] = xfs.length;
+      xfs.push(`<xf numFmtId="${n}" fontId="${f}" fillId="${l}" borderId="${b}" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf>`);
+    }
+    return xfMap[k];
+  };
+  getXf(0, 0, 0, 0);
+  let maxCol = 1;
+  for (let i = 0; i < trs.length; i++) for (let j = 0; j < (cells[i] || []).length; j++) if (cells[i][j]) maxCol = Math.max(maxCol, j + 1);
+  let sx = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1:${colName(maxCol)}${Math.max(1, trs.length)}"/><cols>`;
+  for (let i = 0; i < maxCol; i++) {
+    const w = colW[i] ? Math.round(colW[i] / 7 * 10) / 10 : 10;
+    sx += `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`;
+  }
+  sx += '</cols><sheetData>';
+  for (let i = 0; i < trs.length; i++) {
+    sx += `<row r="${i + 1}">`;
+    for (let cc = 0; cc < (cells[i] || []).length; cc++) {
+      const cell = cells[i][cc];
+      if (!cell) continue;
+      const st = cell.st, td = cell.td;
+      const txt = (td.textContent || '').trim();
+      const bold = /bold/.test(st['font-weight'] || '') ? 1 : 0;
+      const fill = /9cc3ee/i.test(st.background || '') ? 2 : 0;
+      const bd = st.border ? 1 : 0;
+      const nf = getNf(st['mso-number-format'] || '');
+      const sIdx = getXf(bold, fill, bd, nf);
+      const ref = colName(cc + 1) + (i + 1);
+      const fml = td.getAttribute('x:fmla');
+      const isNum = /^-?\d+(\.\d+)?$/.test(txt);
+      if (fml) sx += `<c r="${ref}" s="${sIdx}"><f>${xesc(fml.replace(/^=/, ''))}</f></c>`;
+      else if (txt === '') sx += `<c r="${ref}" s="${sIdx}"/>`;
+      else if (isNum && st['mso-number-format'] !== '@') sx += `<c r="${ref}" s="${sIdx}"><v>${parseFloat(txt)}</v></c>`;
+      else sx += `<c r="${ref}" s="${sIdx}" t="inlineStr"><is><t>${xesc(txt)}</t></is></c>`;
+    }
+    sx += '</row>';
+  }
+  sx += '</sheetData>';
+  if (merges.length) {
+    sx += `<mergeCells count="${merges.length}">` + merges.map(m => `<mergeCell ref="${colName(m.c1)}${m.r1}:${colName(m.c2)}${m.r2}"/>`).join('') + '</mergeCells>';
+  }
+  sx += '</worksheet>';
+  const ct = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`;
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`;
+  const wb = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${xesc(sheetName || 'Sheet1')}" sheetId="1" r:id="rId1"/></sheets><calcPr calcId="0" fullCalcOnLoad="1"/></workbook>`;
+  const wbr = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const sty = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">${numFmts.length ? `<numFmts count="${numFmts.length}">${numFmts.join('')}</numFmts>` : ''}<fonts count="${fonts.length}">${fonts.join('')}</fonts><fills count="${fills.length}">${fills.join('')}</fills><borders count="${borders.length}">${borders.join('')}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join('')}</cellXfs></styleSheet>`;
+  return zipStore([
+    { name: '[Content_Types].xml', data: utf8b(ct) },
+    { name: '_rels/.rels', data: utf8b(rels) },
+    { name: 'xl/workbook.xml', data: utf8b(wb) },
+    { name: 'xl/_rels/workbook.xml.rels', data: utf8b(wbr) },
+    { name: 'xl/styles.xml', data: utf8b(sty) },
+    { name: 'xl/worksheets/sheet1.xml', data: utf8b(sx) }
+  ]);
+}
+function triggerXlsxDownload(bytes, name) {
+  const b = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const u = URL.createObjectURL(b), a = document.createElement('a');
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 4000);
+}
+function exportSingleXlsx(L, s, btn) {
+  const t = L.title.split(' - ')[0].replace(' ', '');
+  const dt = dtf(getVal('date' + s)).replace(/\//g, '-');
+  triggerXlsxDownload(htmlTableToXlsx(xlsTblHtml(L, s, 3, L.n, true), `${t}_Shift${SN[s]}`), `${t}_Shift${SN[s]}_${dt}.xlsx`);
+  if (btn) pToast(`Exported ${L.title.split(' - ')[0]} to Excel ✓`, true);
+}
+function exportAllThreeXlsx(s, btn) {
+  const nMax = Math.max(...LINES.map(L => L.n));
+  let h = '', row = 1;
+  LINES.forEach((L, idx) => {
+    const cnt = gi(`${L.id}_b${s}`).rows.length;
+    h += xlsTblHtml(L, s, row + (idx ? 0 : 2), nMax, idx === 0);
+    row += cnt + (idx ? 0 : 2);
+    if (idx < LINES.length - 1) {
+      h += '<tr><td style="height:12px"></td></tr>';
+      row += 1;
+    }
+  });
+  const dt = dtf(getVal('date' + s)).replace(/\//g, '-');
+  triggerXlsxDownload(htmlTableToXlsx(h, `All 3 Lines - Shift ${SN[s]}`), `All3Lines_Shift${SN[s]}_${dt}.xlsx`);
+  if (btn) pToast(`Exported all 3 lines for Shift ${SN[s]} ✓`, true);
+}
+
+/* ============================================================================
+   10. BOOTSTRAP & BACKGROUND AUTO-POLLING
+   ============================================================================ */
+(function initApp() {
+  buildAllDOM();
+  gi('l3sel').value = L3k;
+  gi('e_vr').value = L3k;
+  const savedZoom = sRead('imgZoom', '100');
+  $$('.isz').forEach(s => { s.value = savedZoom; });
+  document.documentElement.style.setProperty('--z', (+savedZoom || 100) / 100);
+
+  loadLocalState();
+  bindAllEvents();
+
+  const lastPg = sRead('activePg', 'ent');
+  if (gi(lastPg)) {
+    $$('section.pg').forEach(s => s.classList.toggle('on', s.id === lastPg));
+    $$('nav a.tab').forEach(a => a.classList.toggle('on', a.dataset.pg === lastPg));
+  }
+
+  syncNow();
+  setInterval(() => {
+    if (!document.hidden && !SYNC.busy) syncNow({ pullOnly: true });
+  }, 25000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncNow({ pullOnly: true });
+  });
+
+  const ib = gi('install');
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (ib) ib.hidden = false;
+  });
+  if (ib) {
+    ib.addEventListener('click', () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(() => {
+          deferredPrompt = null;
+          ib.hidden = true;
+        });
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>
