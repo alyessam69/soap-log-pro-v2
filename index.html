@@ -542,13 +542,47 @@ td.fa-cell {
   nav a.tab { padding: 9px 11px; font-size: 14px; white-space: nowrap; flex: 0 0 auto; }
   nav .brand { margin-right: 4px; }
   nav .tabsrow { flex: 1 1 0; min-width: 0; }
-  /* the data first on the phone: the tables before the Sheet1 forms */
-  #sh1, #sh2, #sh3 { display: flex; flex-direction: column; }
-  #sh1 > *, #sh2 > *, #sh3 > * { order: 0; }
-  #sh1 > h2, #sh2 > h2, #sh3 > h2 { order: 1; }
-  #sh1 > details.fold, #sh2 > details.fold, #sh3 > details.fold { order: 2; }
-  #sh1 > .gtables, #sh2 > .gtables, #sh3 > .gtables { order: 3; }
-  #sh1 > .gforms, #sh2 > .gforms, #sh3 > .gforms { order: 4; }
+  /* only the page that is open becomes a column - the others stay hidden */
+  #sh1.on, #sh2.on, #sh3.on { display: flex; flex-direction: column; }
+
+  /* the Sheet1 form on the phone: a card per line, the weights wrap,
+     so nothing is off the screen while you type */
+  .pt { display: block; min-width: 0; width: 100%; }
+  .pt > thead, .pt > tbody { display: block; }
+  .pt tr { display: block; }
+  .pt tr:first-child, .pt tr.sp { display: none; }
+  .pt tr:last-child {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 6px 4px;
+    margin: 6px 0;
+    background: var(--card);
+  }
+  .pt td {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    height: auto;
+    border: none;
+    padding: 2px 3px;
+  }
+  .pt td::before {
+    content: attr(data-lb);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--mut);
+    min-width: 74px;
+    text-align: left;
+  }
+  .pt td:not(.wc) { display: flex; width: 100%; }
+  .pt td.wc { width: auto; padding: 2px 3px; }
+  .pt td.wc::before { content: attr(data-lb) "."; min-width: 14px; text-align: right; color: var(--ink); }
+  .pt td input { width: 100%; min-width: 0; }
+  .pt td input[id$="_p"] { width: 150px; min-width: 0; }
+  .pt td input[id$="_bn"] { width: 122px; min-width: 0; }
+  .pt td input[id$="_m"], .pt td input[id$="_ffa"], .pt td input[id$="_fa"] { width: 78px; min-width: 0; }
+  .pt td.wc input { width: 64px; text-align: center; }
   #fab { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
   input, select, textarea { font-size: 16px !important; }
   button { min-height: 42px; }
@@ -629,11 +663,10 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   <div class="brand">
     <span class="bico">🧼</span>
     <span class="bname">Soap Bar Daily Log</span>
-    <span class="badge-v2">PRO v2.3</span>
+    <span class="badge-v2">PRO v2.4</span>
   </div>
   <div class="tabsrow">
-    <a href="#ent" class="tab on" data-pg="ent">⚡ Entry</a>
-    <a href="#sh1" class="tab" data-pg="sh1">Shift A</a>
+      <a href="#sh1" class="tab" data-pg="sh1">Shift A</a>
     <a href="#sh2" class="tab" data-pg="sh2">Shift B</a>
     <a href="#sh3" class="tab" data-pg="sh3">Shift C</a>
     <a href="#set" class="tab" data-pg="set">⚙️ Settings</a>
@@ -669,57 +702,6 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 </nav>
 
 <main>
-  <!-- ENTRY PAGE -->
-  <section id="ent" class="pg on">
-    <h2>
-      <span>⚡ Weights &amp; Sheet1 Entry</span>
-      <span class="stt" id="st"></span>
-    </h2>
-    <div class="card">
-      <div class="grid">
-        <label>Shift
-          <select id="e_sh">
-            <option value="1">Shift A (08:30 - 15:30)</option>
-            <option value="2">Shift B (16:30 - 23:30)</option>
-            <option value="3">Shift C (00:30 - 07:30)</option>
-          </select>
-        </label>
-        <label>Batch
-          <select id="e_bt">
-            <option value="1">Batch 1 (Hours 1 - 3)</option>
-            <option value="2">Batch 2 (Hours 4 - 6)</option>
-            <option value="3">Batch 3 (Hours 7 - 8)</option>
-          </select>
-        </label>
-        <label>Line 3 Product
-          <select id="e_vr">
-            <option value="royal">Royal Lather (6 soaps)</option>
-            <option value="lemon">Lemon Blossom (5 soaps)</option>
-          </select>
-        </label>
-        <label>Shift Date
-          <input id="e_date" type="text" placeholder="DD/MM/YYYY">
-        </label>
-      </div>
-    </div>
-
-    <div id="e_lines"></div>
-
-    <div class="card">
-      <div class="msg" id="e_allwarn"></div>
-      <div class="bar">
-        <button id="e_save" class="p" type="button">💾 Save &amp; Sync</button>
-        <button id="e_regen_batch" type="button">🎲 Regenerate Batch</button>
-        <button id="e_clear" class="danger" type="button">🗑 Clear (Keep Batch No.)</button>
-        <label class="chk-row" style="margin-left:auto">
-          <input type="checkbox" id="e_snd" checked>
-          <span>🔔 Sound on save</span>
-        </label>
-      </div>
-      <div class="msg" id="e_msg"></div>
-    </div>
-  </section>
-
   <!-- SHIFT PAGES CONTAINER -->
   <div id="lines"></div>
 
@@ -1090,13 +1072,13 @@ function buildAllDOM() {
         <td class="avs" data-l="${L.id}" data-s="${s}"></td>
       </tr>
       <tr>
-        <td><input id="${p}_p" value="${L.p}"></td>
-        <td><input id="${p}_bn" value="${L.b}" inputmode="numeric"></td>
-        <td><input id="${p}_m" value="${L.m.toFixed(2)}" data-n="1" inputmode="decimal"></td>
-        <td><input id="${p}_ffa" value="" placeholder="—" data-n="1" inputmode="decimal"></td>
-        <td><input id="${p}_fa" value="${L.fa.toFixed(2)}" placeholder="${L.fa.toFixed(2)}" data-n="1" inputmode="decimal" title="FA source for 8-hour Data table"></td>
-        ${[...Array(n)].map((_, k) => `<td class="wc"><input id="${p}_c${k}" value="${L.c[k].toFixed(2)}" data-n="1" inputmode="decimal"></td>`).join('')}
-        <td class="mn" id="${p}_mean"></td>
+        <td data-lb="Line ${L.id.slice(1)} · Product"><input id="${p}_p" value="${L.p}"></td>
+        <td data-lb="Batch No."><input id="${p}_bn" value="${L.b}" inputmode="numeric"></td>
+        <td data-lb="M/C"><input id="${p}_m" value="${L.m.toFixed(2)}" data-n="1" inputmode="decimal"></td>
+        <td data-lb="FFA"><input id="${p}_ffa" value="" placeholder="—" data-n="1" inputmode="decimal"></td>
+        <td data-lb="FA"><input id="${p}_fa" value="${L.fa.toFixed(2)}" placeholder="${L.fa.toFixed(2)}" data-n="1" inputmode="decimal" title="FA source for 8-hour Data table"></td>
+        ${[...Array(n)].map((_, k) => `<td class="wc" data-lb="${k + 1}"><input id="${p}_c${k}" value="${L.c[k].toFixed(2)}" data-n="1" inputmode="decimal"></td>`).join('')}
+        <td class="mn" id="${p}_mean" data-lb="Avgr"></td>
       </tr>
     </table></div>`;
   };
@@ -1196,7 +1178,6 @@ function buildAllDOM() {
     </section>
   `).join('');
 
-  buildEntryCards();
 }
 
 function buildEntryCards() {
@@ -1490,6 +1471,7 @@ function renderBatchRows(L, s, b) {
 
 /* Synchronize Entry View inputs & averages with STATE */
 function refreshEntryView() {
+  if (!gi('e_lines')) return;          /* the entry page is gone */
   const s = +(gi('e_sh') ? gi('e_sh').value : 1);
   const b = +(gi('e_bt') ? gi('e_bt').value : 1);
   const eDate = gi('e_date');
@@ -1982,6 +1964,7 @@ function bindAllEvents() {
     }
   });
 
+  if (gi('e_sh')) {
   gi('e_sh').addEventListener('change', () => refreshEntryView());
   gi('e_bt').addEventListener('change', () => refreshEntryView());
   gi('e_date').addEventListener('input', ev => {
@@ -1995,14 +1978,13 @@ function bindAllEvents() {
     L3k = newVar;
     sWrite('L3Variant', L3k);
     gi('l3sel').value = L3k;
-    gi('e_vr').value = L3k;
     buildAllDOM();
     loadLocalState();
     bindEntryInputs();
     syncNow();
   };
   gi('l3sel').addEventListener('change', ev => switchLine3Variant(ev.target.value));
-  gi('e_vr').addEventListener('change', ev => switchLine3Variant(ev.target.value));
+  }
 
   bindEntryInputs();
 
@@ -2080,9 +2062,29 @@ function bindAllEvents() {
 
   document.addEventListener('paste', handleExcelPaste);
   document.addEventListener('click', handleButtonClicks);
+
+  /* tap a cell or a box -> everything inside is selected, so typing replaces it */
+  document.addEventListener('focusin', ev => {
+    const t = ev.target;
+    try {
+      if (!t || !t.matches) return;
+      if (t.matches('td[contenteditable]')) {
+        const sel = window.getSelection();
+        if (sel && t.textContent) {
+          const r = document.createRange();
+          r.selectNodeContents(t);
+          sel.removeAllRanges();
+          sel.addRange(r);
+        }
+      } else if (t.matches('input:not([type=checkbox]):not([type=file])')) {
+        if (t.value) t.select();
+      }
+    } catch (e) {}
+  });
 }
 
 function bindEntryInputs() {
+  if (!gi('e_lines')) return;
   const getSB = () => ({ s: +gi('e_sh').value, b: +gi('e_bt').value });
 
   $$('#ent .e-p, #ent .e-bn, #ent .e-moi, #ent .e-fa, #ent .e-ffa, #ent .e-w').forEach(inp => {
@@ -2218,14 +2220,9 @@ function handleButtonClicks(ev) {
     return;
   }
 
-  if (b.id === 'pushBtn' || b.id === 'e_save' || b.dataset.sv) {
+  if (b.id === 'pushBtn' || b.dataset.sv) {
     saveLocalState();
     syncNow({ toast: true, toastMsg: 'Saved & synced with Cloud ✓' });
-    const em = gi('e_msg');
-    if (em && b.id === 'e_save') {
-      em.className = 'msg ok';
-      em.textContent = '✓ Saved to Sheet1, 8-hour tables & synced with Cloud';
-    }
     return;
   }
 
@@ -2262,41 +2259,6 @@ function handleButtonClicks(ev) {
   if (b.id === 'syncCopyUrlBtn') {
     const u = gi('syncCodeInp').value.trim() || DEFAULT_CLOUD_URL;
     copyTextToClipboard(u, b);
-    return;
-  }
-
-  if (b.id === 'e_clear') {
-    const s = +gi('e_sh').value, bt = +gi('e_bt').value;
-    askConfirm(
-      'Clear Batch Weights & QC',
-      `Clear weights, moisture, and FA for Shift ${SN[s]} Batch #${bt} while keeping Batch No. intact?`,
-      () => {
-        const ts = nextEditTimestamp();
-        LINES.forEach(L => {
-          const p = pid(L, s, bt);
-          for (let i = 0; i < L.n; i++) setSingleKey(`${p}_c${i}`, '', ts);
-          setSingleKey(`${p}_m`, L.m.toFixed(2), ts);
-          setSingleKey(`${p}_fa`, L.fa.toFixed(2), ts);
-          setSingleKey(`${p}_ffa`, '', ts);
-        });
-        refreshAllViews();
-        saveLocalState();
-        syncNow({ toast: true, toastMsg: `Cleared Shift ${SN[s]} Batch #${bt} (Batch No. kept) ✓` });
-      }
-    );
-    return;
-  }
-
-  if (b.id === 'e_regen_batch') {
-    const s = +gi('e_sh').value, bt = +gi('e_bt').value;
-    askRegen('eb' + s + '_' + bt, `Regenerate Shift ${SN[s]} Batch #${bt}`,
-      'The weights you typed now and the ones already saved in the cloud stay as they are.\nOnly the empty ones get new random values.\n\nContinue?',
-      (force) => {
-        LINES.forEach(L => regenerateBatch(L, s, bt, force));
-        refreshAllViews();
-        saveLocalState();
-        syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} Batch #${bt} ✓` });
-      });
     return;
   }
 
@@ -2429,7 +2391,7 @@ async function runDiagnostics() {
   box.className = 'msg ok';
   box.textContent = 'Checking Cloud connection and state...';
   const lines = [];
-  lines.push('=== Soap Bar Daily Log Pro v2.3 Diagnostics ===');
+  lines.push('=== Soap Bar Daily Log Pro v2.4 Diagnostics ===');
   lines.push('Cloud URL: ' + (SYNC.code || DEFAULT_CLOUD_URL));
   lines.push('Sync Status: ' + SYNC.state + ' | Highest Timestamp: ' + STATE.maxTs);
   lines.push('');
@@ -2833,7 +2795,6 @@ function exportAllThreeXlsx(s, btn) {
 (function initApp() {
   buildAllDOM();
   gi('l3sel').value = L3k;
-  gi('e_vr').value = L3k;
   const savedZoom = sRead('imgZoom', '100');
   $$('.isz').forEach(s => { s.value = savedZoom; });
   document.documentElement.style.setProperty('--z', (+savedZoom || 100) / 100);
@@ -2841,7 +2802,7 @@ function exportAllThreeXlsx(s, btn) {
   loadLocalState();
   bindAllEvents();
 
-  const lastPg = sRead('activePg', 'ent');
+  const lastPg = sRead('activePg', 'sh1');
   if (gi(lastPg)) {
     $$('section.pg').forEach(s => s.classList.toggle('on', s.id === lastPg));
     $$('nav a.tab').forEach(a => a.classList.toggle('on', a.dataset.pg === lastPg));
