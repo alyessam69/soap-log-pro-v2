@@ -252,6 +252,17 @@ button.danger {
   color: var(--danger);
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
+.xlbox {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin: 10px 0 14px;
+  background: color-mix(in srgb, var(--bg) 45%, var(--card));
+}
+.xlbox .bar { margin: 4px 0 8px; }
+.xlbox .msg { margin: 6px 0; }
+.xlbox .msg:empty { display: none; }
+.xlbox .n { font-size: 12px; opacity: .75; }
 .bar {
   display: flex;
   gap: 8px;
@@ -1161,6 +1172,25 @@ function buildAllDOM() {
       <div class="bar">
         <b>All 3 Lines:</b>
         <button class="p" data-xla="${s}" type="button">📊 Export All 3 Lines to Excel (One Sheet)</button>
+      </div>
+      <div class="xlbox">
+        <div class="bar">
+          <b>📊 Write into my Excel workbook</b>
+          <button class="p" type="button" onclick="xlOpenWrite(${s})">📥 Open my file &amp; write into it</button>
+          <button type="button" onclick="xlOpen(${s})">📂 Open my Excel file</button>
+          <button type="button" id="xl-write-s${s}" onclick="xlWrite(${s})">✍️ Write into the file</button>
+          <label class="as"><span>Lines:</span>
+            <select id="xl-lines-s${s}">
+              <option value="all">All 3 lines</option>
+              <option value="l1">Line 1</option>
+              <option value="l2">Line 2</option>
+              <option value="l3">Line 3</option>
+            </select>
+          </label>
+        </div>
+        <div class="msg" id="xl-status-s${s}"></div>
+        <div class="msg" id="xl-plan-s${s}" style="white-space:pre-wrap"></div>
+        <div class="n" id="xl-note-s${s}"></div>
       </div>
       ${LINES.map(L => `
         <div class="bar">
@@ -2786,6 +2816,252 @@ function exportAllThreeXlsx(s, btn) {
 /* ============================================================================
    10. BOOTSTRAP & BACKGROUND AUTO-POLLING
    ============================================================================ */
+/* ============================================================================
+   10. WRITE INTO THE FACTORY'S EXCEL WORKBOOK  (Daily Soap bar Analysis)
+   The shift rows are written straight into the original workbook: every line
+   lands on the first free row of its own sheet — exactly where you paste them
+   today.  On a computer (Chrome / Edge) the file itself is updated in place.
+   ============================================================================ */
+let xlBook = null, xlName = '', xlHandle = null, xlFresh = false;
+
+function xlEsc(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function xlNum(v) {
+  const t = String(v === undefined || v === null ? '' : v).trim();
+  if (t === '') return '';
+  const n = parseFloat(t.replace(/,/g, ''));
+  return isNaN(n) ? t : n;
+}
+async function xlEngine() {
+  if (window.ExcelJS) return window.ExcelJS;
+  await new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'vendor/exceljs.min.js';
+    sc.onload = () => res();
+    sc.onerror = () => rej(new Error('the Excel engine file is missing (vendor/exceljs.min.js)'));
+    document.head.appendChild(sc);
+  });
+  return window.ExcelJS;
+}
+/* the app says "Line 1 Savannah" but the sheet is "Line 1 Savannah " (a trailing
+   space) — so match the names loosely */
+function xlFindSheet(book, name) {
+  if (!book || !name) return null;
+  const want = String(name).trim().toLowerCase().replace(/\s+/g, ' ');
+  const list = book.worksheets || [];
+  for (let i = 0; i < list.length; i++) {
+    const nm = String(list[i].name).trim().toLowerCase().replace(/\s+/g, ' ');
+    if (nm === want) return list[i];
+  }
+  return null;
+}
+/* where does every field go in this sheet?  (read the sheet's own header row) */
+function xlHeader(ws, n) {
+  let hr = 0, c;
+  for (let r = 1; r <= 8 && !hr; r++) {
+    for (c = 1; c <= 30; c++) {
+      const t = String(ws.getCell(r, c).value == null ? '' : ws.getCell(r, c).value).trim().toLowerCase();
+      if (t === 'date') { hr = r; break; }
+    }
+  }
+  if (!hr) return null;
+  let cDate = 0, cTemp = 0, cAvg = 0;
+  for (c = 1; c <= 30; c++) {
+    const t = String(ws.getCell(hr, c).value == null ? '' : ws.getCell(hr, c).value).trim().toLowerCase();
+    if (!t) continue;
+    if (!cDate && t === 'date') cDate = c;
+    if (t.indexOf('temp') >= 0) cTemp = c;
+    if (t.indexOf('avrg') >= 0 || t.indexOf('average') >= 0) cAvg = c;
+  }
+  if (!cDate || !cTemp || !cAvg) return null;
+  if (cTemp - cDate + 1 !== 11) return null;          /* 11 fields: date..temp */
+  const firstW = cTemp + 1, lastW = cAvg - 1;
+  if (lastW - firstW + 1 !== n) return null;          /* the sheet's weights ≠ this line */
+  return { cDate, cTemp, cAvg, firstW, lastW, nW: lastW - firstW + 1 };
+}
+/* the first free row = the last row that has data (never a hole in the middle) */
+function xlNextRow(ws, c1, c2) {
+  let last = 0;
+  ws.eachRow({ includeEmpty: false }, (row, rn) => {
+    for (let c = c1; c <= c2; c++) {
+      const v = ws.getCell(rn, c).value;
+      if (v !== null && v !== undefined && String(v).trim() !== '') { if (rn > last) last = rn; return; }
+    }
+  });
+  return last + 1;
+}
+/* the rows of one line on one shift — exactly what the Copy button copies */
+function xlRowsFor(L, s) {
+  const tb = gi(L.id + '_b' + s);
+  if (!tb) return [];
+  return Array.from(tb.rows)
+    .map(tr => Array.from(tr.cells).map(c => String(c.textContent || '').trim()))
+    .filter(t => t.slice(4).some(v => v !== ''));     /* skip a row with no reading */
+}
+function xlChosenLines(s) {
+  const sel = gi('xl-lines-s' + s);
+  const v = sel ? sel.value : 'all';
+  return LINES.filter(L => v === 'all' || L.id === v);
+}
+/* Excel serials (1900 system) — built with UTC so the clock of the PC
+   can never move the date by a day */
+function xlSerialDate(d, m, y) { return (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000; }
+function xlSerialTime(h, mi) { return (h * 60 + mi) / 1440; }
+
+function xlWriteRow(ws, r, h, L, t, prevR) {
+  const n = L.n;
+  for (let j = 0; j < 11 + n + 1; j++) {
+    const col = h.cDate + j;
+    const cell = ws.getCell(r, col), src = ws.getCell(prevR, col);
+    if (src && src.style) cell.style = JSON.parse(JSON.stringify(src.style));
+    const v = t[j] === undefined ? '' : t[j];
+    if (j === 0) {                                   /* Date */
+      const p = v.split('/');
+      cell.value = (p.length === 3) ? xlSerialDate(+p[0], +p[1], +p[2]) : (v === '' ? null : v);
+    } else if (j === 1) {                            /* Time */
+      const p = v.split(':');
+      cell.value = (p.length >= 2) ? xlSerialTime(+p[0], +p[1]) : (v === '' ? null : v);
+    } else if (j === 2) {                            /* Product name */
+      cell.value = v === '' ? null : v;
+    } else {                                         /* everything else is a number */
+      const nv = xlNum(v);
+      cell.value = (nv === '' ? null : nv);
+    }
+  }
+  /* the average = the exact mean of the weights (the sheet keeps it that way) */
+  const avg = ws.getCell(r, h.cAvg), srcA = ws.getCell(prevR, h.cAvg);
+  if (srcA && srcA.style) avg.style = JSON.parse(JSON.stringify(srcA.style));
+  const ws2 = [];
+  for (let k = 0; k < n; k++) { const w = parseFloat(t[11 + k]); if (!isNaN(w)) ws2.push(w); }
+  avg.value = ws2.length ? ws2.reduce((a, b) => a + b, 0) / ws2.length : null;
+}
+
+function xlPlan(s) {
+  const plan = gi('xl-plan-s' + s), st = gi('xl-status-s' + s);
+  if (!plan) return;
+  if (!xlBook) { plan.innerHTML = ''; return; }
+  let html = '<b>' + xlEsc(xlName) + '</b><br>';
+  xlChosenLines(s).forEach(L => {
+    const ws = xlFindSheet(xlBook, L.sheet);
+    if (!ws) { html += '⚠ the sheet "' + xlEsc(L.sheet) + '" is not in this workbook<br>'; return; }
+    const h = xlHeader(ws, L.n);
+    if (!h) { html += '⚠ "' + xlEsc(ws.name) + '" has different columns — ' + xlEsc(L.title) + ' skipped<br>'; return; }
+    const r0 = xlNextRow(ws, h.cDate, h.cAvg);
+    const rows = xlRowsFor(L, s);
+    html += '📥 ' + xlEsc(L.title) + ' → <b>' + xlEsc(ws.name) + '</b> · row ' + r0 + (rows.length ? '–' + (r0 + rows.length - 1) : '') + ' (' + rows.length + ' row(s))<br>';
+    if (rows.length) html += '<span style="opacity:.75">' + xlEsc(rows[0].slice(0, 11).join(' · ')) + '</span><br>';
+  });
+  plan.innerHTML = html;
+  const wb = gi('xl-write-s' + s);
+  if (wb) wb.disabled = !xlBook;
+  if (st && !st.textContent) st.textContent = '';
+}
+
+async function xlLoad(s) {
+  const st = gi('xl-status-s' + s);
+  try {
+    if (st) st.textContent = 'Opening the workbook…';
+    /* the picker MUST be asked for inside the click (the browser wants the
+       user gesture) — so ask first, load the Excel engine while the user picks */
+    let pickPromise;
+    if (window.showOpenFilePicker) {
+      pickPromise = window.showOpenFilePicker({
+        multiple: false,
+        types: [{ description: 'Excel workbook', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
+      });
+    } else {
+      pickPromise = new Promise(res => {
+        const i = document.createElement('input');
+        i.type = 'file'; i.accept = '.xlsx';
+        i.style.cssText = 'position:fixed;left:-9999px';
+        i.onchange = () => { const f = i.files && i.files[0]; i.remove(); res(f || null); };
+        document.body.appendChild(i);
+        i.click();
+      });
+    }
+    pickPromise.catch(() => {});
+    const ExcelJS = await xlEngine();
+    const picked = await pickPromise;
+    if (!picked) { if (st) st.textContent = ''; return false; }
+    if (typeof picked.getFile === 'function') {          /* a real file handle */
+      xlHandle = picked; xlName = picked.name;
+      const f = await picked.getFile();
+      xlBook = await new ExcelJS.Workbook().xlsx.load(await f.arrayBuffer());
+    } else {                                             /* a plain File */
+      xlHandle = null; xlName = picked.name || 'workbook.xlsx';
+      xlBook = await new ExcelJS.Workbook().xlsx.load(await picked.arrayBuffer());
+    }
+    const note = gi('xl-note-s' + s);
+    if (note) note.textContent = xlHandle
+      ? '🔒 The file stays open on this device — the rows are written into it directly, no download. Keep this tab open and you can write again any time.'
+      : '⚠ This browser cannot write into the file in place. Use Chrome or Edge on the computer for that — here you get the updated file to replace the old one.';
+    xlFresh = true;
+    xlPlan(s);
+    return true;
+  } catch (e) {
+    if (e && e.name === 'AbortError') { if (st) st.textContent = ''; return false; }
+    if (st) st.textContent = 'ERROR: ' + e.message;
+    return false;
+  }
+}
+async function xlOpen(s) {
+  const st = gi('xl-status-s' + s);
+  if (await xlLoad(s) && st) st.textContent = '✅ ' + xlName + ' is open — check the plan below, then press "Write into the file".';
+}
+async function xlOpenWrite(s) {
+  const st = gi('xl-status-s' + s);
+  if (!await xlLoad(s)) return;
+  if (st) st.textContent = '✅ ' + xlName + ' is open — writing now…';
+  await xlWrite(s);
+}
+async function xlWrite(s) {
+  const st = gi('xl-status-s' + s);
+  if (!xlBook) { if (st) st.textContent = 'Open your Excel file first.'; return; }
+  try {
+    if (st) st.textContent = 'Writing into the workbook…';
+    const ExcelJS = await xlEngine();
+    let book = xlBook;
+    if (xlHandle && !xlFresh) {                      /* re-read: never lose Excel's own edits */
+      const f = await xlHandle.getFile();
+      book = await new ExcelJS.Workbook().xlsx.load(await f.arrayBuffer());
+    }
+    xlFresh = false;
+    const now = new Date();
+    book.created = (book.created instanceof Date && !isNaN(book.created)) ? book.created : now;
+    book.modified = now;
+    const done = [];
+    for (const L of xlChosenLines(s)) {
+      const ws = xlFindSheet(book, L.sheet);
+      if (!ws) { done.push('⚠ ' + L.title + ': sheet not found'); continue; }
+      const h = xlHeader(ws, L.n);
+      if (!h) { done.push('⚠ ' + L.title + ': sheet columns do not match'); continue; }
+      const rows = xlRowsFor(L, s);
+      if (!rows.length) { done.push('· ' + L.title + ': nothing to write'); continue; }
+      let r = xlNextRow(ws, h.cDate, h.cAvg);
+      const start = r;
+      rows.forEach(t => { xlWriteRow(ws, r, h, L, t, r - 1); r++; });
+      done.push('📥 ' + rows.length + ' row(s) → ' + ws.name + ' row ' + start);
+    }
+    const buf = await book.xlsx.writeBuffer();
+    if (xlHandle) {
+      const w = await xlHandle.createWritable();
+      await w.write(buf);
+      await w.close();
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      a.download = xlName || 'workbook.xlsx';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+    }
+    xlPlan(s);
+    if (st) st.textContent = (xlHandle ? '✅ ' : '⬇️ ') + done.join(' · ') + (xlHandle ? ' — the file was updated in place (no download).' : ' — download the updated file and replace the old one.');
+  } catch (e) {
+    if (st) st.textContent = 'ERROR: ' + e.message;
+  }
+}
+
 (function initApp() {
   buildAllDOM();
   gi('l3sel').value = L3k;
