@@ -514,7 +514,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 <nav>
   <div class="brand">
     <span>🧼 Soap Bar Daily Log</span>
-    <span class="badge-v2">PRO v2.0</span>
+    <span class="badge-v2">PRO v2.1</span>
   </div>
   <a href="#ent" class="tab on" data-pg="ent">⚡ Entry</a>
   <a href="#sh1" class="tab" data-pg="sh1">Shift A</a>
@@ -855,6 +855,20 @@ function getBatchSeed(L, s, b) {
   return STATE.v[k] || '1';
 }
 
+/* A second press within 5 seconds asks the stronger question: OK replaces the
+   weights you typed too, Cancel keeps them and refreshes the empty ones only */
+const _regenAt = {};
+function regenForce(key) { const n = Date.now(); return (n - (_regenAt[key] || 0)) < 5000; }
+function askRegen(key, title, msg, onDo) {
+  if (regenForce(key)) {
+    askConfirm(title + ' - replace everything?',
+      'This will ALSO replace the weights you typed just now and the ones already saved in the cloud with new random values.\n\nOK = replace them too.  Cancel = keep them and refresh the empty ones only.',
+      () => { _regenAt[key] = Date.now(); onDo(true); });
+  } else {
+    askConfirm(title, msg, () => { _regenAt[key] = Date.now(); onDo(false); });
+  }
+}
+
 /* Modal Confirmation Helper (replaces window.confirm) */
 function askConfirm(title, message, onConfirm) {
   const m = gi('confirmModal');
@@ -1141,6 +1155,7 @@ function setSingleKey(id, val, ts) {
 function updateField(id, rawVal, opts = {}) {
   const ts = opts.ts !== undefined ? opts.ts : nextEditTimestamp();
   let val = toEnDigits(rawVal);
+  GENERATED[id] = 0;          /* the user wrote it: it is a real value now */
   if (opts.fixWeight && val.trim() !== '' && /^-?\d+(\.\d+)?$/.test(val.trim())) {
     val = fixW(val.trim());
   }
@@ -1519,7 +1534,10 @@ function loadLocalState() {
 }
 
 /* Regenerate Random Weights & Moisture for a Batch or Shift */
-function regenerateBatch(L, s, b) {
+/* the values the app made up itself: a later regenerate may replace them */
+const GENERATED = {};
+
+function regenerateBatch(L, s, b, force) {
   const ts = nextEditTimestamp();
   const p = pid(L, s, b);
   const v = getNum('var' + s, 0.2);
@@ -1527,11 +1545,20 @@ function regenerateBatch(L, s, b) {
   setSingleKey('seed_' + p, newSeed, ts);
 
   for (let k = 0; k < L.n; k++) {
+    const id = `${p}_c${k}`;
+    /* the real measurements stay: only the empty boxes - or the ones the app
+       made up itself - get new random numbers */
+    if (!force && getVal(id).trim() !== '' && !GENERATED[id]) continue;
     const nw = fixW(seededRnd(L.c[k], v, 2, `${newSeed}_init_${p}_c${k}`).toFixed(2));
-    setSingleKey(`${p}_c${k}`, nw, ts);
+    setSingleKey(id, nw, ts);
+    GENERATED[id] = 1;
   }
-  const nm = seededRnd(L.m, v, 2, `${newSeed}_init_${p}_m`).toFixed(2);
-  setSingleKey(`${p}_m`, nm, ts);
+  const mid = `${p}_m`;
+  if (force || !getVal(mid).trim() || GENERATED[mid]) {
+    const nm = seededRnd(L.m, v, 2, `${newSeed}_init_${p}_m`).toFixed(2);
+    setSingleKey(mid, nm, ts);
+    GENERATED[mid] = 1;
+  }
   if (!getVal(`${p}_fa`).trim()) {
     setSingleKey(`${p}_fa`, L.fa.toFixed(2), ts);
   }
@@ -2134,48 +2161,52 @@ function handleButtonClicks(ev) {
 
   if (b.id === 'e_regen_batch') {
     const s = +gi('e_sh').value, bt = +gi('e_bt').value;
-    LINES.forEach(L => regenerateBatch(L, s, bt));
-    refreshAllViews();
-    saveLocalState();
-    syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} Batch #${bt} ✓` });
+    askRegen('eb' + s + '_' + bt, `Regenerate Shift ${SN[s]} Batch #${bt}`,
+      'The weights you typed now and the ones already saved in the cloud stay as they are.\nOnly the empty ones get new random values.\n\nContinue?',
+      (force) => {
+        LINES.forEach(L => regenerateBatch(L, s, bt, force));
+        refreshAllViews();
+        saveLocalState();
+        syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} Batch #${bt} ✓` });
+      });
     return;
   }
 
   if (b.dataset.gb) {
     const [s, bt] = b.dataset.gb.split('_').map(Number);
-    LINES.forEach(L => regenerateBatch(L, s, bt));
-    refreshAllViews();
-    saveLocalState();
-    syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} Batch #${bt} ✓` });
+    askRegen('gb' + s + '_' + bt, `Regenerate Shift ${SN[s]} Batch #${bt}`,
+      'The weights you typed now and the ones already saved in the cloud stay as they are.\nOnly the empty ones get new random values.\n\nContinue?',
+      (force) => {
+        LINES.forEach(L => regenerateBatch(L, s, bt, force));
+        refreshAllViews();
+        saveLocalState();
+        syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} Batch #${bt} ✓` });
+      });
     return;
   }
 
   if (b.dataset.gs) {
     const s = +b.dataset.gs;
-    askConfirm(
-      `Regenerate Shift ${SN[s]}`,
-      `Generate new random weights and moisture for all batches (1, 2, 3) in Shift ${SN[s]}?`,
-      () => {
-        LINES.forEach(L => [1, 2, 3].forEach(bt => regenerateBatch(L, s, bt)));
+    askRegen('gs' + s, `Regenerate Shift ${SN[s]}`,
+      `Generate new random weights and moisture for all batches (1, 2, 3) in Shift ${SN[s]}?\n\nThe weights you typed now and the ones already saved in the cloud stay as they are - only the empty ones get new random values.\n\nContinue?`,
+      (force) => {
+        LINES.forEach(L => [1, 2, 3].forEach(bt => regenerateBatch(L, s, bt, force)));
         refreshAllViews();
         saveLocalState();
         syncNow({ toast: true, toastMsg: `Regenerated Shift ${SN[s]} & synced ✓` });
-      }
-    );
+      });
     return;
   }
 
   if (b.id === 'all') {
-    askConfirm(
-      'Regenerate All Shifts (A, B, C)',
-      'Generate new random weights and moisture for all shifts and lines and sync with Cloud?',
-      () => {
-        LINES.forEach(L => SHIFTS.forEach(([s]) => [1, 2, 3].forEach(bt => regenerateBatch(L, s, bt))));
+    askRegen('all', 'Regenerate All Shifts (A, B, C)',
+      'Generate new random weights and moisture for all shifts and lines and sync with Cloud?\n\nThe weights you typed now and the ones already saved in the cloud stay as they are - only the empty ones get new random values.\n\nContinue?',
+      (force) => {
+        LINES.forEach(L => SHIFTS.forEach(([s]) => [1, 2, 3].forEach(bt => regenerateBatch(L, s, bt, force))));
         refreshAllViews();
         saveLocalState();
         syncNow({ toast: true, toastMsg: 'Regenerated all shifts & synced ✓' });
-      }
-    );
+      });
     return;
   }
 
@@ -2270,7 +2301,7 @@ async function runDiagnostics() {
   box.className = 'msg ok';
   box.textContent = 'Checking Cloud connection and state...';
   const lines = [];
-  lines.push('=== Soap Bar Daily Log Pro v2.0 Diagnostics ===');
+  lines.push('=== Soap Bar Daily Log Pro v2.1 Diagnostics ===');
   lines.push('Cloud URL: ' + (SYNC.code || DEFAULT_CLOUD_URL));
   lines.push('Sync Status: ' + SYNC.state + ' | Highest Timestamp: ' + STATE.maxTs);
   lines.push('');
