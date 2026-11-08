@@ -663,7 +663,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   <div class="brand">
     <span class="bico">🧼</span>
     <span class="bname">Soap Bar Daily Log</span>
-    <span class="badge-v2">PRO v2.4</span>
+    <span class="badge-v2">PRO v2.5</span>
   </div>
   <div class="tabsrow">
       <a href="#sh1" class="tab" data-pg="sh1">Shift A</a>
@@ -2436,19 +2436,13 @@ async function copyTextToClipboard(text, btn) {
 }
 
 function buildTsv(L, s) {
-  const r0 = parseInt(getVal(L.id + '_r'), 10);
-  const last = String.fromCharCode(76 + L.n);
   const tb = gi(`${L.id}_b${s}`);
-  return Array.from(tb.rows).map((tr, k) =>
-    Array.from(tr.cells).map((c, j, a) => {
-      if (j === a.length - 1) {
-        return r0 ? `=AVERAGE(M${r0 + k + 8 * (s - 1)}:${last}${r0 + k + 8 * (s - 1)})` : (c.dataset.v || '');
-      }
-      if (j === 9) {
-        return c.dataset.v ? (r0 ? `=((100-SUM(F${r0 + k + 8 * (s - 1)}:J${r0 + k + 8 * (s - 1)})-2)/1.086)` : c.dataset.v) : '';
-      }
-      return c.textContent.trim();
-    }).join('\t')
+  if (!tb) return '';
+  /* the copy = EXACTLY what is on the screen, cell by cell (no formulas).
+     a pasted formula keeps the sheet row numbers it was written with, so it
+     breaks the moment it lands on another row - the values never do. */
+  return Array.from(tb.rows).map(tr =>
+    Array.from(tr.cells).map(c => c.textContent.trim()).join('\t')
   ).join('\n');
 }
 
