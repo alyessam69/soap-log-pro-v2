@@ -1,4 +1,4 @@
-const CACHE_NAME = 'soap-pro-v2-cache-v2';
+const CACHE_NAME = 'soap-pro-v2-cache-v3';
 const ASSETS = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', event => {

@@ -501,6 +501,11 @@ label.btn {
 }
 </style>
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="application-name" content="Soap Log v2">
+<meta name="mobile-web-app-capable" content="yes">
 <script>
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   window.addEventListener('load', () => {
@@ -514,7 +519,7 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 <nav>
   <div class="brand">
     <span>🧼 Soap Bar Daily Log</span>
-    <span class="badge-v2">PRO v2.1</span>
+    <span class="badge-v2">PRO v2.2</span>
   </div>
   <a href="#ent" class="tab on" data-pg="ent">⚡ Entry</a>
   <a href="#sh1" class="tab" data-pg="sh1">Shift A</a>
@@ -2301,7 +2306,7 @@ async function runDiagnostics() {
   box.className = 'msg ok';
   box.textContent = 'Checking Cloud connection and state...';
   const lines = [];
-  lines.push('=== Soap Bar Daily Log Pro v2.1 Diagnostics ===');
+  lines.push('=== Soap Bar Daily Log Pro v2.2 Diagnostics ===');
   lines.push('Cloud URL: ' + (SYNC.code || DEFAULT_CLOUD_URL));
   lines.push('Sync Status: ' + SYNC.state + ' | Highest Timestamp: ' + STATE.maxTs);
   lines.push('');
@@ -2734,7 +2739,14 @@ function exportAllThreeXlsx(s, btn) {
     deferredPrompt = e;
     if (ib) ib.hidden = false;
   });
+  window.addEventListener('appinstalled', () => {
+    deferredPrompt = null;
+    if (ib) ib.hidden = true;
+  });
   if (ib) {
+    /* iPhone Safari has no beforeinstallprompt: the app is added from the
+       Share menu.  The button shows anyway and explains the 2 steps. */
+    setTimeout(() => { if (!deferredPrompt) ib.hidden = false; }, 2000);
     ib.addEventListener('click', () => {
       if (deferredPrompt) {
         deferredPrompt.prompt();
@@ -2742,6 +2754,8 @@ function exportAllThreeXlsx(s, btn) {
           deferredPrompt = null;
           ib.hidden = true;
         });
+      } else if (typeof pToast === 'function') {
+        pToast('To install: on Android tap the menu (⋮) then "Install app" - on iPhone tap Share then "Add to Home Screen"', true);
       }
     });
   }
