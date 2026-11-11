@@ -26,7 +26,10 @@ plus one, never a hole in the middle of the sheet:
   table, nothing is re-invented.
 - The date and the time are written as real Excel date/time values, the batch as a number,
   the average as the exact mean of the weights — the way the sheet already keeps them.
-- Each new row copies the look of the row above it (borders, number formats, fonts).
+- Every new row takes the format the factory rows have: each column uses the **most common**
+  look of its own rows, and the block keeps the factory's borders (a thick line on the top of
+  the first row and on the bottom of the last one). A broken format in the file — a wrong
+  font, a colour, a *text* number format — can never come into the new rows.
 - The workbook is re-read right before writing, so edits you made in Excel meanwhile are
   never lost, and the file is updated **in place** (no download) on Chrome / Edge.
 - The engine is [ExcelJS](https://github.com/exceljs/exceljs) (vendored in `vendor/`).
