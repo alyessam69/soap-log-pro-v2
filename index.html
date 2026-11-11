@@ -3261,5 +3261,55 @@ async function xlWrite(s) {
   }
 })();
 </script>
+<script>
+/* ============================================================================
+   OPEN AT THE HOUR OF THE DAY
+   The factory works in ranges of hours (Shift A 08:30-15:30, Shift B
+   16:30-23:30, Shift C 00:30-07:30) - the operator opens the app at whatever
+   hour it is, so we jump to the page that covers this hour and scroll to that
+   hour in the 8-hour table.
+   ============================================================================ */
+(function(){
+  function currentHour(){ return new Date().getHours(); }
+  function pageOfHour(h){
+    if (h >= 8 && h <= 15) return { pg: 'sh1', s: 1 };
+    if (h >= 16 && h <= 23) return { pg: 'sh2', s: 2 };
+    if (h >= 0 && h <= 7) return { pg: 'sh3', s: 3 };
+    return null;
+  }
+  function rowOfHour(s, h) {
+    var tb = document.getElementById('l1_b' + s);
+    if (!tb) return null;
+    var rows = tb.rows, fallback = null;
+    for (var i = 0; i < rows.length; i++) {
+      var txt = (rows[i].cells[1] || {}).textContent || '';
+      var m = /(\d{1,2}):(\d{2})/.exec(txt);
+      if (!m) continue;
+      if (!fallback) fallback = rows[i];
+      if (+m[1] === h) { fallback = rows[i]; break; }
+    }
+    return fallback;
+  }
+  function scrollToHour(s, h) {
+    var row = rowOfHour(s, h);
+    if (row) row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  function go() {
+    var h = currentHour(), t = pageOfHour(h);
+    if (!t) return;
+    var cur = document.querySelector('section.pg.on');
+    if (!cur || cur.id !== t.pg) {
+      var tab = document.querySelector('nav a.tab[data-pg="' + t.pg + '"]');
+      if (tab) tab.click();          /* the app's own handler - it scrolls to the top */
+    }
+    /* the app draws everything a moment later, so we scroll again once the
+       page has its final height (the first scroll can be clamped) */
+    setTimeout(function () { scrollToHour(t.s, h); }, 160);
+    setTimeout(function () { scrollToHour(t.s, h); }, 700);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go);
+  else setTimeout(go, 90);
+})();
+</script>
 </body>
 </html>
