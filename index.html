@@ -2921,12 +2921,78 @@ function xlChosenLines(s) {
 function xlSerialDate(d, m, y) { return (Date.UTC(y, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000; }
 function xlSerialTime(h, mi) { return (h * 60 + mi) / 1440; }
 
-function xlWriteRow(ws, r, h, L, t, prevR) {
+/* the format of the rows we write: the MOST COMMON format of the data rows of
+   the sheet - a broken row (a wrong font, a colour, a text format...) can never
+   change what we paste. The borders of the block are ours: medium on the top
+   of the first row and on the bottom of the last one, like the factory sheets. */
+function xlRowKey(ws, rn, c1, c2) {
+  const parts = [];
+  for (let c = c1; c <= c2; c++) {
+    const st = ws.getCell(rn, c).style || {};
+    const f = st.font || {}, a = st.alignment || {};
+    parts.push([f.name || '', f.size || '', f.bold ? 'b' : '', f.italic ? 'i' : '',
+                a.horizontal || '', a.vertical || '', st.numFmt || '',
+                (st.fill && st.fill.type) ? 'f' : ''].join('|'));
+  }
+  return parts.join('#');
+}
+function xlRowTemplate(ws, h) {
+  const c1 = h.cDate, c2 = h.cAvg;
+  const rows = [];
+  ws.eachRow({ includeEmpty: false }, (row, rn) => {
+    for (let c = c1; c <= c2; c++) {
+      const v = ws.getCell(rn, c).value;
+      if (v !== null && v !== undefined && String(v).trim() !== '') { rows.push(rn); return; }
+    }
+  });
+  const counts = {}; let best = null, bestN = 0;
+  rows.forEach(rn => {
+    const k = xlRowKey(ws, rn, c1, c2);
+    counts[k] = (counts[k] || 0) + 1;
+    if (counts[k] > bestN) { bestN = counts[k]; best = rn; }
+  });
+  const ref = best || rows[0] || 1;
+  const cols = {};
+  for (let c = c1; c <= c2; c++) {
+    const src = ws.getCell(ref, c);
+    const st = (src && src.style) ? JSON.parse(JSON.stringify(src.style)) : null;
+    const s = st || {};
+    const f = s.font || {}, a = s.alignment || {};
+    cols[c] = {
+      numFmt: s.numFmt || 'General',
+      font: { name: f.name || 'Calibri', size: f.size || 10, bold: (f.bold === undefined ? true : f.bold), italic: !!f.italic, underline: f.underline, color: f.color },
+      alignment: { horizontal: (a.horizontal || 'center'), vertical: (a.vertical || 'center') },
+      fill: s.fill || { type: 'pattern', pattern: 'none' },
+      border: s.border || {}
+    };
+  }
+  /* the height: the most common one of the rows */
+  const hn = {}; let hb = null, hbN = 0;
+  rows.forEach(rn => {
+    let hh = 0; try { hh = ws.getRow(rn).height || 0; } catch (e) { }
+    if (hh) { hn[hh] = (hn[hh] || 0) + 1; if (hn[hh] > hbN) { hbN = hn[hh]; hb = hh; } }
+  });
+  return { cols: cols, height: hb || null, ref: ref };
+}
+/* the clean style of one cell of the block */
+function xlCellStyle(t, isFirst, isLast) {
+  t = t || {};
+  const b = t.border || {};
+  return {
+    numFmt: t.numFmt || 'General',
+    font: t.font || { name: 'Calibri', size: 10, bold: true },
+    alignment: t.alignment || { horizontal: 'center', vertical: 'center' },
+    fill: t.fill || { type: 'pattern', pattern: 'none' },
+    border: { left: b.left || { style: 'thin' }, right: b.right || { style: 'thin' },
+              top: { style: isFirst ? 'medium' : 'thin' }, bottom: { style: isLast ? 'medium' : 'thin' } }
+  };
+}
+function xlWriteRow(ws, r, h, L, t, tmpl, isFirst, isLast) {
   const n = L.n;
   for (let j = 0; j < 11 + n + 1; j++) {
     const col = h.cDate + j;
-    const cell = ws.getCell(r, col), src = ws.getCell(prevR, col);
-    if (src && src.style) cell.style = JSON.parse(JSON.stringify(src.style));
+    const cell = ws.getCell(r, col);
+    cell.style = xlCellStyle(tmpl && tmpl.cols[col], isFirst, isLast);   /* never a broken format */
     const v = t[j] === undefined ? '' : t[j];
     if (j === 0) {                                   /* Date */
       const p = v.split('/');
@@ -2942,8 +3008,9 @@ function xlWriteRow(ws, r, h, L, t, prevR) {
     }
   }
   /* the average = the exact mean of the weights (the sheet keeps it that way) */
-  const avg = ws.getCell(r, h.cAvg), srcA = ws.getCell(prevR, h.cAvg);
-  if (srcA && srcA.style) avg.style = JSON.parse(JSON.stringify(srcA.style));
+  const avg = ws.getCell(r, h.cAvg);
+  avg.style = xlCellStyle(tmpl && tmpl.cols[h.cAvg], isFirst, isLast);
+  if (tmpl && tmpl.height) ws.getRow(r).height = tmpl.height;   /* the height of the factory */
   const ws2 = [];
   for (let k = 0; k < n; k++) { const w = parseFloat(t[11 + k]); if (!isNaN(w)) ws2.push(w); }
   avg.value = ws2.length ? ws2.reduce((a, b) => a + b, 0) / ws2.length : null;
@@ -3107,7 +3174,8 @@ async function xlWrite(s) {
       if (!rows.length) { done.push('· ' + L.title + ': nothing to write'); continue; }
       let r = xlNextRow(ws, h.cDate, h.cAvg);
       const start = r;
-      rows.forEach(t => { xlWriteRow(ws, r, h, L, t, r - 1); r++; });
+      const tmpl = xlRowTemplate(ws, h);      /* the clean format of this sheet */
+      rows.forEach((t, i) => { xlWriteRow(ws, r, h, L, t, tmpl, i === 0, i === rows.length - 1); r++; });
       done.push('📥 ' + rows.length + ' row(s) → ' + ws.name + ' row ' + start + (hit.how === 'structure' ? ' (matched by columns)' : ''));
     }
     const buf = await book.xlsx.writeBuffer();
