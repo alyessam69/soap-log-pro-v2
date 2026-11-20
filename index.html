@@ -3311,5 +3311,39 @@ async function xlWrite(s) {
   else setTimeout(go, 90);
 })();
 </script>
+
+<script>
+/* The Line 3 variant (Royal = 6 soaps / Lemon = 5 soaps).
+   The select of the nav was bound inside "if (gi('e_sh'))" in bindAllEvents()
+   - the entry page is not on the screen, so that block never ran: picking the
+   other variant did nothing at all and the app stayed on 6 soaps.
+   The binding lives here now, on its own, so the original code is untouched. */
+(function () {
+  var switchLine3Variant = function (newVar) {
+    if (newVar !== 'royal' && newVar !== 'lemon') return;
+    if (newVar === L3k) return;
+    saveLocalState();                       /* the old variant keeps its own data */
+    L3k = newVar;
+    sWrite('L3Variant', L3k);
+    var sel = gi('l3sel');
+    if (sel) sel.value = L3k;
+    /* the two variants use the same keys (l3s1b1_c0 ...) - the old values
+       must go, or the new sheet would show the weights of the other one */
+    Object.keys(STATE.v).forEach(function (k) {
+      if (isL3Key(k)) { delete STATE.v[k]; delete STATE.ft[k]; delete GENERATED[k]; }
+    });
+    buildAllDOM();
+    loadLocalState();
+    bindEntryInputs();
+    refreshAllViews();
+    syncNow();
+  };
+  var sel = gi('l3sel');
+  if (sel && !sel.__variantBound) {
+    sel.__variantBound = true;
+    sel.addEventListener('change', function (ev) { switchLine3Variant(ev.target.value); });
+  }
+})();
+</script>
 </body>
 </html>
