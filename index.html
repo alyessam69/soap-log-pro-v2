@@ -2506,27 +2506,33 @@ async function copyTextToClipboard(text, btn) {
 function skippedSoaps(p) {
   return (getVal('skip_' + p) || '').split(',').filter(x => x !== '').map(Number);
 }
-/* how many soaps are really on this line: the ones that have a weight.
-   The empty ones at the end do NOT show - not in the tables and not in the
-   image (the way the factory draws the line).
+/* the soaps that are really on this line: the ones that have a weight.
+   The empty ones do NOT show - not in the tables and not in the image (the
+   way the factory draws the line) - wherever they are: the first one, one in
+   the middle or the last one.
+   Every soap keeps its own number.
    If nothing is registered yet the fields stay (the operator can type). */
-function soapsUsed(L, s, b) {
+function soapsOn(L, s, b) {
   const p = pid(L, s, b);
-  let k = 0;
-  for (let j = 0; j < L.n; j++) if (getVal(p + '_c' + j).trim() !== '') k = j + 1;
-  return k || L.n;
+  const out = [];
+  for (let j = 0; j < L.n; j++) if (getVal(p + '_c' + j).trim() !== '') out.push(j);
+  return out.length ? out : [...Array(L.n).keys()];
 }
-/* the same for a whole shift (the table of the 8 hours covers the 3 batches) */
-function soapsUsedShift(L, s) {
-  let k = 0;
-  for (let b = 1; b <= 3; b++) k = Math.max(k, soapsUsed(L, s, b));
-  return k || L.n;
+/* the same for a whole shift (the table of the 8 hours covers the 3 batches):
+   a soap that is used in any batch of the shift keeps its column */
+function soapsOnShift(L, s) {
+  const set = {};
+  for (let b = 1; b <= 3; b++) soapsOn(L, s, b).forEach(j => { set[j] = 1; });
+  const out = Object.keys(set).map(Number).sort((a, b) => a - b);
+  return out.length ? out : [...Array(L.n).keys()];
 }
 /* hide / show the soap columns that are not registered */
 function applySoapColumns(L, s) {
   const tb = gi(`${L.id}_b${s}`);
   if (!tb) return;
-  const used = soapsUsedShift(L, s);
+  const on = soapsOnShift(L, s);
+  const there = {};
+  on.forEach(j => { there[j] = 1; });
   const tbl = tb.closest('table');
   if (tbl) {
     const hrows = tbl.querySelectorAll('thead tr');
@@ -2535,13 +2541,13 @@ function applySoapColumns(L, s) {
     const top = hrows[0], hr = hrows[hrows.length - 1];
     if (top) {
       const nw = top.querySelector('th[colspan]');
-      if (nw) nw.colSpan = used;
+      if (nw) nw.colSpan = on.length;
     }
     if (hr) {
       for (let k = 0; k < L.n; k++) {
         const th = hr.cells[k];
         if (!th) continue;
-        if (k >= used) { th.style.display = 'none'; th.dataset.hidden = '1'; }
+        if (!there[k]) { th.style.display = 'none'; th.dataset.hidden = '1'; }
         else { th.style.display = ''; delete th.dataset.hidden; }
       }
     }
@@ -2550,7 +2556,7 @@ function applySoapColumns(L, s) {
     for (let k = 0; k < L.n; k++) {
       const c = tr.cells[11 + k];
       if (!c) continue;
-      if (k >= used) { c.style.display = 'none'; c.dataset.hidden = '1'; }
+      if (!there[k]) { c.style.display = 'none'; c.dataset.hidden = '1'; }
       else { c.style.display = ''; delete c.dataset.hidden; }
     }
   });
@@ -2561,8 +2567,10 @@ function buildTsv(L, s) {
   /* the copy = EXACTLY what is on the screen, cell by cell (no formulas).
      a pasted formula keeps the sheet row numbers it was written with, so it
      breaks the moment it lands on another row - the values never do. */
+  /* the copy keeps EVERY column - even the empty one: the rows are pasted
+     into the sheet of the factory and the columns must stay in their place */
   return Array.from(tb.rows).map(tr =>
-    Array.from(tr.cells).filter(c => c.dataset.hidden !== '1').map(c => c.textContent.trim()).join('\t')
+    Array.from(tr.cells).map(c => c.textContent.trim()).join('\t')
   ).join('\n');
 }
 
@@ -2573,7 +2581,7 @@ function renderSheet1Canvas(items) {
   const fw = [200, 125, 70, 60, 86], pw = 78, av = 116, rh = 34;
   const zoomSel = $('.isz');
   const sc = 2 * ((zoomSel ? +zoomSel.value : 100) || 100) / 100;
-  const wd = it => fw.reduce((a, c) => a + c, 0) + soapsUsed(it.L, it.s, it.b) * pw + av;
+  const wd = it => fw.reduce((a, c) => a + c, 0) + soapsOn(it.L, it.s, it.b).length * pw + av;
   const W = Math.max(...items.map(wd));
   const H = items.length * 3 * rh;
   const cv = document.createElement('canvas');
@@ -2601,8 +2609,9 @@ function renderSheet1Canvas(items) {
 
   items.forEach((it, idx) => {
     const L = it.L, p = pid(L, it.s, it.b);
-    /* the image stops at the last soap that is registered */
-    const n = soapsUsed(L, it.s, it.b), y = idx * 3 * rh;
+    /* only the soaps that are registered are drawn - each one keeps its own
+       number (if the soap 1 is not registered, it is not drawn at all) */
+    const on = soapsOn(L, it.s, it.b), n = on.length, y = idx * 3 * rh;
     let x = 0;
     ['Product Name', 'Batch No.', 'M/C', 'FFA', 'FAL'].forEach((t, i) => {
       drawCell(x, y, fw[i], t, { b: 1 });
@@ -2617,15 +2626,15 @@ function renderSheet1Canvas(items) {
       drawCell(x, y + rh, fw[i], t, { fill: L.hc, b: 1 });
       x += fw[i];
     });
-    for (let i = 1; i <= n; i++) {
-      drawCell(x, y + rh, pw, i, { fill: L.hc, b: 1 });
+    on.forEach(j => {
+      drawCell(x, y + rh, pw, j + 1, { fill: L.hc, b: 1 });
       x += pw;
-    }
+    });
     const lo = getVal(`amin${it.s}${L.id}`), hi = getVal(`amax${it.s}${L.id}`);
     drawCell(x, y + rh, av, (lo && hi) ? `${lo}-${hi}` : '', { fill: L.hc, b: 1 });
 
     x = 0;
-    const rawWs = [...Array(n)].map((_, j) => getVal(`${p}_c${j}`).trim());
+    const rawWs = on.map(j => getVal(`${p}_c${j}`).trim());
     const ws = rawWs.map(w => (w !== '' && !isNaN(+w)) ? (+w).toFixed(2) : '');
     const validWs = ws.filter(Boolean).map(Number);
     const mVal = getVal(p + '_m').trim();
@@ -2751,10 +2760,7 @@ function xesc(s) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function xlsTblHtml(L, s, row0, nMax, withHead) {
-  const rows = Array.from(gi(`${L.id}_b${s}`).rows);
-  /* only the soaps that are registered go into the file - the last column of
-     the average follows them (the empty ones of the factory stay empty) */
-  const n = soapsUsedShift(L, s), lw = String.fromCharCode(76 + n);
+  const rows = Array.from(gi(`${L.id}_b${s}`).rows), n = L.n, lw = String.fromCharCode(76 + n);
   const B = 'border:1px solid #000;text-align:center;font:10pt Calibri;';
   const bl = 'background:#9CC3EE;font-weight:bold;';
   const c = (v, st, x) => `<td style="${B}${st || ''}"${x || ''}>${v}</td>`;
@@ -2768,7 +2774,7 @@ function xlsTblHtml(L, s, row0, nMax, withHead) {
       '<tr><td></td>' + SPEC.map(t => c(t, bl)).join('') + [...Array(nMax)].map((_, i) => c(i < n ? i + 1 : '', bl)).join('') + '</tr>';
   }
   rows.forEach((tr, i) => {
-    const r = row0 + i, vals = Array.from(tr.cells).filter(x => x.dataset.hidden !== '1').map(x => x.textContent.trim());
+    const r = row0 + i, vals = Array.from(tr.cells).map(x => x.textContent.trim());
     h += '<tr><td></td>';
     vals.forEach((v, j) => {
       const nf = j < 11 ? F[j] : '0.00';
