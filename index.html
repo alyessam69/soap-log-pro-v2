@@ -2604,7 +2604,13 @@ function renderSheet1Canvas(items) {
     g.strokeRect(x + 0.5, y + 0.5, w, rh);
     g.fillStyle = '#000';
     g.font = (o.b ? 'bold ' : '') + '15px Calibri, "Segoe UI", Arial';
-    g.fillText(String(t == null ? '' : t), x + w / 2 + 0.5, y + rh / 2 + 1);
+    const text = String(t == null ? '' : t);
+    if (o.fit) {
+      const textWidth = g.measureText(text).width;
+      const fontSize = textWidth > w - 16 ? 15 * (w - 16) / textWidth : 15;
+      g.font = (o.b ? 'bold ' : '') + fontSize + 'px Calibri, "Segoe UI", Arial';
+    }
+    g.fillText(text, x + w / 2 + 0.5, y + rh / 2 + 1);
   };
 
   items.forEach((it, idx) => {
@@ -2646,7 +2652,7 @@ function renderSheet1Canvas(items) {
       getVal(p + '_fa').trim()
     ];
     rowVals.forEach((t, i) => {
-      drawCell(x, y + 2 * rh, fw[i], t);
+      drawCell(x, y + 2 * rh, fw[i], t, { fit: i === 0 });
       x += fw[i];
     });
     ws.forEach(t => {
@@ -3446,4 +3452,4 @@ async function xlWrite(s) {
 })();
 </script>
 </body>
-</html>
+    </html>
