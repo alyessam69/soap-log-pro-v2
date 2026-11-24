@@ -1,5 +1,5 @@
-const CACHE_NAME = 'soap-pro-v2-cache-v15';
-const ASSETS = ['./', './index.html', './manifest.webmanifest'];
+const CACHE_NAME = 'soap-pro-v2-cache-v16';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './vendor/exceljs.min.js'];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
