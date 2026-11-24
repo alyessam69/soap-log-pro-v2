@@ -735,9 +735,9 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     <h2>⚙️ Settings, Backup &amp; Cloud Diagnostics</h2>
     <div id="sg" class="grid"></div>
     <div class="bar">
-      <label class="as" title="Automatically propagate Batch No. across all shifts and batches of the day">
-        <input type="checkbox" id="syncBnAll" checked>
-        <span>Sync Batch No. to all shifts of the day</span>
+      <label class="as" title="Batch No. always fills the batches of the same shift. Tick to also fill the other shifts">
+        <input type="checkbox" id="syncBnAll">
+        <span>Also sync Batch No. to the other shifts of the day</span>
       </label>
       <button id="all" class="p" type="button">🎲 Regenerate All Shifts</button>
       <button id="ex" type="button">📥 Export JSON Backup</button>
@@ -1329,25 +1329,32 @@ function updateField(id, rawVal, opts = {}) {
     setSingleKey('skip_' + sm[1], list.join(','), ts);
   }
 
-  // Check if this is a Batch Number (`l1s1b1_bn`) and propagate across shift & day if enabled
+  // Batch No. typed in any batch of a shift fills the other batches of THAT shift.
+  // Other shifts change only if the "also sync other shifts" option is ticked.
   const bnMatch = id.match(/^(l\d)s(\d)b(\d)_bn$/);
   if (bnMatch && !opts.skipBatchPropagation) {
     const lineId = bnMatch[1];
     const curShift = +bnMatch[2];
-    const syncAllDay = gi('syncBnAll') ? gi('syncBnAll').checked : true;
+    const syncAllDay = gi('syncBnAll') ? gi('syncBnAll').checked : false;
     if (syncAllDay) {
       SHIFTS.forEach(([s]) => {
         [1, 2, 3].forEach(b => {
-          const targetId = `${lineId}s${s}b${b}_bn`;
-          setSingleKey(targetId, val, ts);
+          setSingleKey(`${lineId}s${s}b${b}_bn`, val, ts);
         });
       });
     } else {
       [1, 2, 3].forEach(b => {
-        const targetId = `${lineId}s${curShift}b${b}_bn`;
-        setSingleKey(targetId, val, ts);
+        setSingleKey(`${lineId}s${curShift}b${b}_bn`, val, ts);
       });
     }
+  }
+
+  // Product Name typed in the FIRST batch of a shift fills batches 2 and 3 of the same shift only.
+  const pnMatch = id.match(/^(l\d)s(\d)b1_p$/);
+  if (pnMatch && !opts.skipBatchPropagation) {
+    [2, 3].forEach(b => {
+      setSingleKey(`${pnMatch[1]}s${pnMatch[2]}b${b}_p`, val, ts);
+    });
   }
 
   // Keep backward-compatible QC keys mirrored when Sheet1 M/C, FA, or FFA changes
@@ -3452,4 +3459,4 @@ async function xlWrite(s) {
 })();
 </script>
 </body>
-    </html>
+        </html>
