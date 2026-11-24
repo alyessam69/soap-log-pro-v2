@@ -2584,11 +2584,19 @@ function buildTsv(L, s) {
 /* ============================================================================
    8. SHEET1 PNG IMAGE GENERATOR & SHARER
    ============================================================================ */
+/* Export only recorded soap weights. Unlike the editable table helper, this
+   has no all-empty fallback: an empty line must not export soap numbers.
+   Keep original indices and numeric zero; never change stored readings. */
+function soapsForImage(L, s, b) {
+  const p = pid(L, s, b);
+  return Array.from({ length: L.n }, (_, j) => j)
+    .filter(j => getVal(`${p}_c${j}`).trim() !== '');
+}
 function renderSheet1Canvas(items) {
   const fw = [200, 125, 70, 60, 86], pw = 78, av = 116, rh = 34;
   const zoomSel = $('.isz');
   const sc = 2 * ((zoomSel ? +zoomSel.value : 100) || 100) / 100;
-  const wd = it => fw.reduce((a, c) => a + c, 0) + soapsOn(it.L, it.s, it.b).length * pw + av;
+  const wd = it => fw.reduce((a, c) => a + c, 0) + soapsForImage(it.L, it.s, it.b).length * pw + av;
   const W = Math.max(...items.map(wd));
   const H = items.length * 3 * rh;
   const cv = document.createElement('canvas');
@@ -2624,13 +2632,13 @@ function renderSheet1Canvas(items) {
     const L = it.L, p = pid(L, it.s, it.b);
     /* only the soaps that are registered are drawn - each one keeps its own
        number (if the soap 1 is not registered, it is not drawn at all) */
-    const on = soapsOn(L, it.s, it.b), n = on.length, y = idx * 3 * rh;
+    const on = soapsForImage(L, it.s, it.b), n = on.length, y = idx * 3 * rh;
     let x = 0;
     ['Product Name', 'Batch No.', 'M/C', 'FFA', 'FAL'].forEach((t, i) => {
       drawCell(x, y, fw[i], t, { b: 1 });
       x += fw[i];
     });
-    drawCell(x, y, n * pw, `NET Weight  ${L.gm} GM`, { b: 1 });
+    if (n) drawCell(x, y, n * pw, `NET Weight  ${L.gm} GM`, { b: 1 });
     x += n * pw;
     drawCell(x, y, av, 'Avrg', { b: 1 });
 
@@ -3459,4 +3467,4 @@ async function xlWrite(s) {
 })();
 </script>
 </body>
-        </html>
+      </html>
