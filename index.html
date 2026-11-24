@@ -944,6 +944,12 @@ const fixW = v => {
   if (/^-?\d+$/.test(v)) return v + '.01';
   return v;
 };
+/* ONE numeric rule for every table, image, average and export:
+   only a clean number counts - "110abc" is text, not a reading */
+const parseW = v => {
+  const t = String(v === undefined || v === null ? '' : v).trim();
+  return /^-?\d+(\.\d+)?$/.test(t) ? parseFloat(t) : NaN;
+};
 
 /* Deterministic Pseudo-Random Variation:
    Ensures Phone and PC calculate the exact same hourly variations from the same Sheet1 numbers! */
@@ -1389,7 +1395,7 @@ function recalcTableRow(tr, L, s) {
   }
 
   const wCells = Array.from(tr.querySelectorAll('td.w'));
-  const nums = wCells.map(td => parseFloat(td.textContent)).filter(x => !isNaN(x));
+  const nums = wCells.map(td => parseW(td.textContent)).filter(x => !isNaN(x));
   const avgCell = tr.querySelector('td.a');
   if (!avgCell) return;
   if (!nums.length) {
@@ -1419,7 +1425,7 @@ function renderBatchRows(L, s, b) {
   const pnVal = getVal(p + '_p') || L.p;
   const bnVal = getVal(p + '_bn') || getVal(pid(L, s, 1) + '_bn') || getVal(pid(L, 1, 1) + '_bn') || L.b;
   const rawM = getVal(p + '_m').trim();
-  const baseM = parseFloat(rawM);
+  const baseM = parseW(rawM);
   const ffaVal = getVal(p + '_ffa').trim();
   // FA comes strictly from Sheet1 (`p + '_fa'`)
   const faVal = getVal(p + '_fa').trim();
@@ -1480,20 +1486,29 @@ function renderBatchRows(L, s, b) {
       cFa.textContent = faVal;
     }
 
-    // Cl (Col 7) & Gly (Col 8) at test hours
+    // Cl (Col 7) & Gly (Col 8) at test hours.
+    // A reading the operator typed for THIS hour is kept under its own key
+    // (`..._h<row>_cl` etc.): the generated value only fills hours that have
+    // no typed reading, and clearing the cell brings the generated one back.
     const cCl = row.cells[7];
     const cGly = row.cells[8];
+    cCl.dataset.h = `${p}_h${r}_cl`;
+    cGly.dataset.h = `${p}_h${r}_gly`;
+    const ovCl = getVal(`${p}_h${r}_cl`).trim();
+    const ovGly = getVal(`${p}_h${r}_gly`).trim();
     if (document.activeElement !== cCl) {
-      cCl.textContent = isTestHr ? seededRnd(baseCl, vCl, 2, `${seed}_${p}_cl_${r}`).toFixed(2) : '';
+      cCl.textContent = ovCl !== '' ? ovCl : (isTestHr ? seededRnd(baseCl, vCl, 2, `${seed}_${p}_cl_${r}`).toFixed(2) : '');
     }
     if (document.activeElement !== cGly) {
-      cGly.textContent = isTestHr ? seededRnd(baseGly, vGly, 2, `${seed}_${p}_gly_${r}`).toFixed(2) : '';
+      cGly.textContent = ovGly !== '' ? ovGly : (isTestHr ? seededRnd(baseGly, vGly, 2, `${seed}_${p}_gly_${r}`).toFixed(2) : '');
     }
 
-    // Temp (Col 10)
+    // Temp (Col 10) - same: a typed reading for this hour is kept
     const cTmp = row.cells[10];
+    cTmp.dataset.h = `${p}_h${r}_tmp`;
+    const ovTmp = getVal(`${p}_h${r}_tmp`).trim();
     if (document.activeElement !== cTmp) {
-      cTmp.textContent = seededRnd(baseTmp, vTmp, 1, `${seed}_${p}_tmp_${r}`).toFixed(1);
+      cTmp.textContent = ovTmp !== '' ? ovTmp : seededRnd(baseTmp, vTmp, 1, `${seed}_${p}_tmp_${r}`).toFixed(1);
     }
 
     // Weights (Cols 11 .. 11 + L.n - 1)
@@ -1503,7 +1518,7 @@ function renderBatchRows(L, s, b) {
       wCell.dataset.w = `${p}_c${k}`;
       if (document.activeElement !== wCell) {
         const wRaw = getVal(`${p}_c${k}`).trim();
-        const bw = parseFloat(wRaw);
+        const bw = parseW(wRaw);
         if (wRaw === '' || isNaN(bw)) {
           wCell.textContent = '';
         } else if (isFirstHr) {
@@ -1522,7 +1537,7 @@ function renderBatchRows(L, s, b) {
 
   // Update Sheet1 Batch Mean & Spec Range
   const validWs = [...Array(L.n)]
-    .map((_, k) => parseFloat(getVal(`${p}_c${k}`)))
+    .map((_, k) => parseW(getVal(`${p}_c${k}`)))
     .filter(x => !isNaN(x));
   const meanEl = gi(`${p}_mean`);
   if (meanEl) {
@@ -1582,7 +1597,7 @@ function refreshEntryView() {
         wEl.classList.add('bad');
       } else {
         wEl.classList.remove('bad');
-        const n = parseFloat(curVal);
+        const n = parseW(curVal);
         if (!isNaN(n)) nums.push(n);
       }
     });
@@ -2091,6 +2106,13 @@ function bindAllEvents() {
       if (targetId) {
         updateField(targetId, t.textContent.trim());
       }
+      return;
+    }
+    if (t.matches('td.cl-cell[contenteditable], td.gly-cell[contenteditable], td.tmp-cell[contenteditable]')) {
+      /* an hourly Cl / Gly / Temp reading belongs to this hour only:
+         save it under its own key so it survives tab switches and reloads */
+      const targetId = t.dataset.h;
+      if (targetId) updateField(targetId, t.textContent.trim());
       return;
     }
     if (t.matches('td.w[contenteditable]')) {
@@ -2656,13 +2678,17 @@ function renderSheet1Canvas(items) {
 
     x = 0;
     const rawWs = on.map(j => getVal(`${p}_c${j}`).trim());
-    const ws = rawWs.map(w => (w !== '' && !isNaN(+w)) ? (+w).toFixed(2) : '');
+    const ws = rawWs.map(w => {
+      const nw = parseW(w);
+      return (w !== '' && !isNaN(nw)) ? nw.toFixed(2) : '';
+    });
     const validWs = ws.filter(Boolean).map(Number);
     const mVal = getVal(p + '_m').trim();
+    const mNum = parseW(mVal);
     const rowVals = [
       getVal(p + '_p'),
       getVal(p + '_bn'),
-      (mVal !== '' && !isNaN(+mVal)) ? (+mVal).toFixed(2) : '',
+      (mVal !== '' && !isNaN(mNum)) ? mNum.toFixed(2) : '',
       getVal(p + '_ffa').trim(),
       getVal(p + '_fa').trim()
     ];
@@ -3144,7 +3170,7 @@ function xlWriteRow(ws, r, h, L, t, tmpl, isFirst, isLast) {
   avg.style = ast;
   if (tmpl && tmpl.height) ws.getRow(r).height = tmpl.height;   /* the height of the factory */
   const ws2 = [];
-  for (let k = 0; k < n; k++) { const w = parseFloat(t[11 + k]); if (!isNaN(w)) ws2.push(w); }
+  for (let k = 0; k < n; k++) { const w = parseW(t[11 + k]); if (!isNaN(w)) ws2.push(w); }
   avg.value = ws2.length ? xl2dec(ws2.reduce((a, b) => a + b, 0) / ws2.length) : null;
 }
 
