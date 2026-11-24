@@ -1843,18 +1843,22 @@ async function deriveAesKey(saltB64) {
 
 async function readCloudDoc() {
   const url = (SYNC.code || DEFAULT_CLOUD_URL).trim();
-  const res = await fetch(url, { cache: 'no-store' });
-  if (res.status === 404) return null;
+  /* ask for the document ETag: the write can then say "only if nobody else
+     changed it since I read it", so two devices cannot silently overwrite
+     each other */
+  const res = await fetch(url, { cache: 'no-store', headers: { 'X-Firebase-ETag': 'true' } });
+  const etag = res.headers && res.headers.get ? res.headers.get('ETag') : null;
+  if (res.status === 404) return { doc: null, etag };
   if (!res.ok) throw new Error('HTTP ' + res.status);
   const body = await res.json();
-  if (!body) return null;
+  if (!body) return { doc: null, etag };
   if (body.enc === 'aesgcm') {
     SYNC.salt = body.salt || SYNC.salt;
     const key = await deriveAesKey(body.salt);
     const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(body.iv) }, key, unb64(body.ct));
-    return JSON.parse(new TextDecoder().decode(pt));
+    return { doc: JSON.parse(new TextDecoder().decode(pt)), etag };
   }
-  return body.sv === 2 ? body : null;
+  return { doc: body.sv === 2 ? body : null, etag };
 }
 
 /* Build Local Buckets with Per-Field Timestamps (`v` and `t`) */
@@ -1927,6 +1931,14 @@ function mergeCloudAndLocal(remoteDoc) {
       } else if (hasR) {
         mergedV[id] = String(rV[id]);
         mergedT[id] = rFieldTs;
+        /* equal timestamps: the merged copy takes the remote value, so the
+           local state must take it too - otherwise this device keeps showing
+           its own value while every other device shows the other one */
+        if (STATE.v[id] !== String(rV[id]) || (STATE.ft[id] || 0) !== rFieldTs) {
+          STATE.v[id] = String(rV[id]);
+          STATE.ft[id] = rFieldTs;
+          localChanged = true;
+        }
       }
       if (mergedT[id] > bucketMaxTs) bucketMaxTs = mergedT[id];
     });
@@ -1942,7 +1954,7 @@ function mergeCloudAndLocal(remoteDoc) {
   };
 }
 
-async function writeCloudDoc(plainObj) {
+async function writeCloudDoc(plainObj, etag) {
   const url = (SYNC.code || DEFAULT_CLOUD_URL).trim();
   if (!SYNC.salt) {
     SYNC.salt = b64(crypto.getRandomValues(new Uint8Array(16)));
@@ -1963,11 +1975,18 @@ async function writeCloudDoc(plainObj) {
     iv: b64(iv),
     ct: b64(new Uint8Array(ct))
   };
+  const headers = { 'Content-Type': 'application/json' };
+  if (etag) headers['if-match'] = etag;
   const res = await fetch(url, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(envelope)
   });
+  if (res.status === 412) {
+    const e = new Error('HTTP 412');
+    e.precondition = true;       /* someone else wrote first: re-read and retry */
+    throw e;
+  }
   if (!res.ok) throw new Error('HTTP ' + res.status);
 }
 
@@ -1980,15 +1999,28 @@ async function syncNow(opts = {}) {
   SYNC.busy = true;
   setSyncStatus('busy', opts.pushOnly ? '🟡 Pushing...' : '🟡 Syncing...');
   try {
-    const remoteDoc = await readCloudDoc();
-    const { mergedPlain, localChanged, remoteNeedsUpdate } = mergeCloudAndLocal(remoteDoc);
+    let round = await readCloudDoc();
+    let merged = mergeCloudAndLocal(round.doc);
 
-    if (localChanged) {
+    if (merged.localChanged) {
       refreshAllViews();
       saveLocalState();
     }
-    if ((remoteNeedsUpdate || opts.forcePush) && !opts.pullOnly) {
-      await writeCloudDoc(mergedPlain);
+    if ((merged.remoteNeedsUpdate || opts.forcePush) && !opts.pullOnly) {
+      try {
+        await writeCloudDoc(merged.mergedPlain, round.etag);
+      } catch (e) {
+        if (!e || !e.precondition) throw e;
+        /* another device wrote between our read and our write:
+           read its version, merge again, and write once more */
+        round = await readCloudDoc();
+        merged = mergeCloudAndLocal(round.doc);
+        if (merged.localChanged) {
+          refreshAllViews();
+          saveLocalState();
+        }
+        await writeCloudDoc(merged.mergedPlain, round.etag);
+      }
     }
     SYNC.last = Date.now();
     syncPersistMeta();
@@ -2050,28 +2082,6 @@ function bindAllEvents() {
       return;
     }
   });
-
-  if (gi('e_sh')) {
-  gi('e_sh').addEventListener('change', () => refreshEntryView());
-  gi('e_bt').addEventListener('change', () => refreshEntryView());
-  gi('e_date').addEventListener('input', ev => {
-    const s = +gi('e_sh').value;
-    updateField('date' + s, ev.target.value);
-  });
-
-  const switchLine3Variant = newVar => {
-    if (newVar !== 'royal' && newVar !== 'lemon') return;
-    saveLocalState();
-    L3k = newVar;
-    sWrite('L3Variant', L3k);
-    gi('l3sel').value = L3k;
-    buildAllDOM();
-    loadLocalState();
-    bindEntryInputs();
-    syncNow();
-  };
-  gi('l3sel').addEventListener('change', ev => switchLine3Variant(ev.target.value));
-  }
 
   bindEntryInputs();
 
@@ -2395,7 +2405,20 @@ function handleButtonClicks(ev) {
   }
 
   if (b.id === 'ex') {
-    const blob = new Blob([JSON.stringify({ v: STATE.v, ft: STATE.ft, maxTs: STATE.maxTs }, null, 2)], { type: 'application/json' });
+    /* a backup must be the WHOLE app: the shared lines, BOTH Line 3 variants
+       (not only the one on the screen) and which variant is active */
+    saveLocalState();          /* the packs on disk catch up with the screen first */
+    const pack = k => { try { return JSON.parse(sRead(k, 'null')); } catch (e) { return null; } };
+    const data = {
+      app: 'soap-pro-v2',
+      fmt: 2,
+      exportedAt: new Date().toISOString(),
+      variant: L3k,
+      shared: pack('shared_state'),
+      l3_royal: pack('l3_state_royal'),
+      l3_lemon: pack('l3_state_lemon')
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = `soap_pro_v2_backup_${_iso()}.json`;
@@ -2457,21 +2480,68 @@ function handleButtonClicks(ev) {
   }
 }
 
+/* A backup pack is only trusted when it has the shape the app writes:
+   { v: {key: value}, ft: {key: number}, maxTs: number } with plain key names */
+function isValidBackupPack(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
+  if (!p.v || typeof p.v !== 'object' || Array.isArray(p.v)) return false;
+  const keyOk = k => /^[A-Za-z0-9_]+$/.test(k);
+  if (!Object.keys(p.v).every(keyOk)) return false;
+  if (p.ft !== undefined && (typeof p.ft !== 'object' || p.ft === null || Array.isArray(p.ft) || !Object.keys(p.ft).every(keyOk))) return false;
+  if (p.maxTs !== undefined && typeof p.maxTs !== 'number') return false;
+  return true;
+}
+
 gi('imp').addEventListener('change', ev => {
   const f = ev.target.files[0];
   if (!f) return;
+  ev.target.value = '';          /* the same file can be picked again */
   const r = new FileReader();
   r.onload = () => {
     try {
       const data = JSON.parse(r.result);
-      const tsNow = nextEditTimestamp();
-      Object.entries(data.v || {}).forEach(([k, val]) => {
-        STATE.v[k] = String(val);
-        STATE.ft[k] = (data.ft && data.ft[k]) || tsNow;
-      });
-      refreshAllViews();
-      saveLocalState();
-      syncNow({ toast: true, toastMsg: 'Backup imported & synced ✓' });
+      if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('bad shape');
+
+      if (data.fmt === 2) {
+        /* the full backup: shared lines + both Line 3 variants + which is active */
+        if (data.app !== 'soap-pro-v2') throw new Error('bad app');
+        ['shared', 'l3_royal', 'l3_lemon'].forEach(k => {
+          if (data[k] != null && !isValidBackupPack(data[k])) throw new Error('bad pack ' + k);
+        });
+        if (data.variant !== undefined && data.variant !== 'royal' && data.variant !== 'lemon') throw new Error('bad variant');
+        if (data.shared) sWrite('shared_state', JSON.stringify(data.shared));
+        if (data.l3_royal) sWrite('l3_state_royal', JSON.stringify(data.l3_royal));
+        if (data.l3_lemon) sWrite('l3_state_lemon', JSON.stringify(data.l3_lemon));
+        const newVar = data.variant || L3k;
+        /* rebuild from the restored copy, the same way the cloud reset does */
+        STATE.v = {};
+        STATE.ft = {};
+        STATE.maxTs = 0;
+        if (newVar !== L3k) {
+          L3k = newVar;
+          sWrite('L3Variant', L3k);
+          const sel = gi('l3sel');
+          if (sel) sel.value = L3k;
+          buildAllDOM();
+        }
+        initDefaultState();
+        loadLocalState();
+        bindEntryInputs();
+        syncNow({ toast: true, toastMsg: 'Backup imported & synced ✓' });
+      } else if (data.v && typeof data.v === 'object' && !Array.isArray(data.v) &&
+                 Object.keys(data.v).every(k => /^[A-Za-z0-9_]+$/.test(k))) {
+        /* the older backup shape (active state only) still imports */
+        const tsNow = nextEditTimestamp();
+        Object.entries(data.v).forEach(([k, val]) => {
+          STATE.v[k] = String(val);
+          STATE.ft[k] = (data.ft && typeof data.ft === 'object' && isFinite(+data.ft[k])) ? +data.ft[k] : tsNow;
+        });
+        refreshAllViews();
+        saveLocalState();
+        syncNow({ toast: true, toastMsg: 'Backup imported & synced ✓' });
+      } else {
+        throw new Error('bad shape');
+      }
     } catch (e) {
       pToast('Invalid backup JSON file', false);
     }
@@ -2497,7 +2567,8 @@ async function runDiagnostics() {
     });
   });
   try {
-    const rem = await readCloudDoc();
+    const remRound = await readCloudDoc();
+    const rem = remRound && remRound.doc;
     lines.push('');
     if (!rem) {
       lines.push('Cloud Status: Ready (will initialize node on first save)');
@@ -3461,10 +3532,7 @@ async function xlWrite(s) {
 
 <script>
 /* The Line 3 variant (Royal = 6 soaps / Lemon = 5 soaps).
-   The select of the nav was bound inside "if (gi('e_sh'))" in bindAllEvents()
-   - the entry page is not on the screen, so that block never ran: picking the
-   other variant did nothing at all and the app stayed on 6 soaps.
-   The binding lives here now, on its own, so the original code is untouched. */
+   The binding lives here, on its own, so the rest of the app code is untouched. */
 (function () {
   var switchLine3Variant = function (newVar) {
     if (newVar !== 'royal' && newVar !== 'lemon') return;
