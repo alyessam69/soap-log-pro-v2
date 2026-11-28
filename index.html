@@ -938,6 +938,7 @@ const yestDMY = () => {
 const DATE_MANUAL = { 1: false, 2: false, 3: false };
 const autoDate = s => (+s === 3 ? yestDMY() : todayDMY());
 function applyAutoDates() {
+  let changed = false;
   [1, 2, 3].forEach(s => {
     const dk = 'date' + s;
     if (DATE_MANUAL[s]) return;
@@ -949,8 +950,10 @@ function applyAutoDates() {
       if (ts > STATE.maxTs) STATE.maxTs = ts;
       const el = gi(dk);
       if (el && document.activeElement !== el && el.value !== auto) el.value = auto;
+      changed = true;
     }
   });
+  return changed;
 }
 const dtf = v => {
   v = String(v || '').trim();
@@ -2020,7 +2023,8 @@ async function syncNow(opts = {}) {
     let round = await readCloudDoc();
     let merged = mergeCloudAndLocal(round.doc);
 
-    if (merged.localChanged) {
+    /* a stale date coming down from the cloud must not stick either */
+    if (applyAutoDates() || merged.localChanged) {
       refreshAllViews();
       saveLocalState();
     }
@@ -2033,7 +2037,7 @@ async function syncNow(opts = {}) {
            read its version, merge again, and write once more */
         round = await readCloudDoc();
         merged = mergeCloudAndLocal(round.doc);
-        if (merged.localChanged) {
+        if (applyAutoDates() || merged.localChanged) {
           refreshAllViews();
           saveLocalState();
         }
@@ -3583,4 +3587,4 @@ async function xlWrite(s) {
 })();
 </script>
 </body>
-  </html>
+    </html>
