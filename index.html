@@ -930,6 +930,28 @@ const yestDMY = () => {
   d.setUTCDate(d.getUTCDate() - 1);
   return dmY(d.toISOString().slice(0, 10));
 };
+
+/* Auto date (requested 2026-11-28): shift A/B = today, shift C = yesterday.
+   Recomputed at every load and whenever the app comes back to the foreground,
+   so the date never has to be typed by hand. A date typed by hand still wins
+   for the rest of the session (DATE_MANUAL marks it). */
+const DATE_MANUAL = { 1: false, 2: false, 3: false };
+const autoDate = s => (+s === 3 ? yestDMY() : todayDMY());
+function applyAutoDates() {
+  [1, 2, 3].forEach(s => {
+    const dk = 'date' + s;
+    if (DATE_MANUAL[s]) return;
+    const auto = autoDate(s);
+    if (STATE.v[dk] !== auto) {
+      const ts = nextEditTimestamp();
+      STATE.v[dk] = auto;
+      STATE.ft[dk] = ts;
+      if (ts > STATE.maxTs) STATE.maxTs = ts;
+      const el = gi(dk);
+      if (el && document.activeElement !== el && el.value !== auto) el.value = auto;
+    }
+  });
+}
 const dtf = v => {
   v = String(v || '').trim();
   return v.indexOf('-') > 0 ? v.split('-').reverse().join('/') : v;
@@ -1319,6 +1341,7 @@ function updateField(id, rawVal, opts = {}) {
   const ts = opts.ts !== undefined ? opts.ts : nextEditTimestamp();
   let val = toEnDigits(rawVal);
   GENERATED[id] = 0;          /* the user wrote it: it is a real value now */
+  if (/^date[123]$/.test(id)) DATE_MANUAL[+id.slice(4)] = true;   /* hand-typed date wins until the next load */
   if (opts.fixWeight && val.trim() !== '' && /^-?\d+(\.\d+)?$/.test(val.trim())) {
     val = fixW(val.trim());
   }
@@ -1716,12 +1739,7 @@ function loadLocalState() {
         }
       });
     });
-    ['1', '2', '3'].forEach(s => {
-      const dk = 'date' + s;
-      if (!STATE.ft[dk]) {
-        STATE.v[dk] = (+s === 3 ? yestDMY() : todayDMY());
-      }
-    });
+    applyAutoDates();
   } catch (e) {}
   refreshAllViews();
 }
@@ -3447,7 +3465,11 @@ async function xlWrite(s) {
     if (!document.hidden && !SYNC.busy) syncNow({ pullOnly: true });
   }, 25000);
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) syncNow({ pullOnly: true });
+    if (!document.hidden) {
+      applyAutoDates();          /* keep the shift dates on the right day */
+      refreshAllViews();
+      syncNow({ pullOnly: true });
+    }
   });
 
   const ib = gi('install');
@@ -3561,4 +3583,4 @@ async function xlWrite(s) {
 })();
 </script>
 </body>
-      </html>
+  </html>
